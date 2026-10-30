@@ -11,7 +11,7 @@ const MAX_FALL: f32 = 600.0;
 const PLAYER_HALF_W: f32 = 10.0;
 const PLAYER_HALF_H: f32 = 14.0;
 
-#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Debug)]
 enum BlockType {
     Dirt,
     Stone,
@@ -62,6 +62,14 @@ struct Score {
 }
 
 #[derive(Resource)]
+struct SelectedBlock(BlockType);
+impl Default for SelectedBlock {
+    fn default() -> Self {
+        Self(BlockType::Dirt)
+    }
+}
+
+#[derive(Resource)]
 struct DayNight {
     time: f32,
 }
@@ -101,6 +109,7 @@ fn main() {
         }))
         .insert_resource(Inventory::default())
         .insert_resource(Score::default())
+        .insert_resource(SelectedBlock::default())
         .insert_resource(DayNight::default())
         .insert_resource(ClearColor(Color::srgb(0.5, 0.7, 1.0)))
         .add_systems(Startup, setup)
@@ -114,6 +123,7 @@ fn main() {
                 save_load,
                 day_night,
                 creature_ai,
+                hotbar_input,
                 update_hud,
             ),
         )
@@ -346,6 +356,7 @@ fn mouse_interact(
     mut grid: ResMut<WorldGrid>,
     mut inventory: ResMut<Inventory>,
     mut score: ResMut<Score>,
+    selected: Res<SelectedBlock>,
     creatures: Query<(Entity, &Transform), With<Creature>>,
 ) {
     let Some(cursor_pos) = window.cursor_position() else {
@@ -387,9 +398,14 @@ fn mouse_interact(
     } else if mouse_buttons.just_pressed(MouseButton::Right) {
         // place dirt if empty
         if grid.get(tx, ty).is_none() {
-            if inventory.dirt > 0 {
-                inventory.dirt -= 1;
-                let bt = BlockType::Dirt;
+            let bt = selected.0;
+            let have = match bt {
+                BlockType::Dirt => &mut inventory.dirt,
+                BlockType::Stone => &mut inventory.stone,
+                BlockType::Ore => &mut inventory.ore,
+            };
+            if *have > 0 {
+                *have -= 1;
                 let e = commands
                     .spawn((
                         Sprite {
@@ -412,9 +428,9 @@ fn mouse_interact(
     }
 }
 
-fn update_hud(inventory: Res<Inventory>, score: Res<Score>, mut q: Query<&mut Text, With<Hud>>) {
+fn update_hud(inventory: Res<Inventory>, score: Res<Score>, selected: Res<SelectedBlock>, mut q: Query<&mut Text, With<Hud>>) {
     for mut t in &mut q {
-        t.0 = format!("Dirt: {}  Stone: {}  Ore: {}  Kills: {}", inventory.dirt, inventory.stone, inventory.ore, score.kills);
+        t.0 = format!("Dirt: {} Stone: {} Ore: {} Kills: {} | Place: {:?}", inventory.dirt, inventory.stone, inventory.ore, score.kills, selected.0);
     }
 }
 
@@ -652,5 +668,17 @@ mod tests {
         assert!(grid.idx(3, 3).is_some());
         assert!(grid.idx(-1, 0).is_none());
         assert!(grid.idx(4, 0).is_none());
+    }
+}
+
+fn hotbar_input(keyboard: Res<ButtonInput<KeyCode>>, mut selected: ResMut<SelectedBlock>) {
+    if keyboard.just_pressed(KeyCode::Digit1) {
+        selected.0 = BlockType::Dirt;
+    }
+    if keyboard.just_pressed(KeyCode::Digit2) {
+        selected.0 = BlockType::Stone;
+    }
+    if keyboard.just_pressed(KeyCode::Digit3) {
+        selected.0 = BlockType::Ore;
     }
 }
