@@ -65,3 +65,6 @@ impl Default for WeatherTimer {
 
 #[derive(Resource, Default)]
 pub struct Jetpack(pub bool);
+
+#[derive(Resource, Default)]
+pub struct Paused(pub bool);

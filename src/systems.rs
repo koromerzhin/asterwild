@@ -871,3 +871,20 @@ pub fn toggle_jetpack(keyboard: Res<ButtonInput<KeyCode>>, mut inventory: ResMut
         jetpack.0 = true;
     }
 }
+
+pub fn toggle_pause(keyboard: Res<ButtonInput<KeyCode>>, mut paused: ResMut<Paused>, mut q: Query<&mut Visibility, With<PauseUi>>) {
+    if keyboard.just_pressed(KeyCode::Escape) {
+        paused.0 = !paused.0;
+    }
+    for mut v in &mut q {
+        *v = if paused.0 { Visibility::Visible } else { Visibility::Hidden };
+    }
+}
+
+pub fn apply_pause(paused: Res<Paused>, mut time: ResMut<Time<Virtual>>) {
+    if paused.0 {
+        time.set_relative_speed(0.0);
+    } else {
+        time.set_relative_speed(1.0);
+    }
+}

@@ -52,3 +52,7 @@ pub struct InventoryUi;
 
 #[derive(Component)]
 pub struct JumpsLeft(pub u32);
+
+
+#[derive(Component)]
+pub struct PauseUi;
