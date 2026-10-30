@@ -1,5 +1,6 @@
 use crate::blocks::{self, BlockType};
 use crate::components::*;
+use crate::components::{MainMenuUi, PauseMenuUi, SettingsUi};
 use crate::components::Cloud;
 use crate::components::CreditsUi;
 use crate::components::SplashUi;
@@ -8,6 +9,7 @@ use crate::components::GameState;
 use crate::components::MinimapCell;
 use crate::resources::DayNight;
 use crate::resources::*;
+use crate::resources::{UiScreen, UiScreenKind};
 use crate::resources::AudioEvent;
 use crate::save::SaveData;
 use crate::world::{
@@ -1007,18 +1009,6 @@ pub fn play_beep(sink: &rodio::MixerDeviceSink, freq: f32, dur: f32) {
     sink.mixer().add(source);
 }
 
-pub fn menu_input(keyboard: Res<ButtonInput<KeyCode>>, mut next_state: ResMut<NextState<GameState>>, mut exit: MessageWriter<AppExit>, mut q: Query<&mut Visibility, With<MenuUi>>) {
-    if keyboard.just_pressed(KeyCode::Enter) {
-        next_state.set(GameState::Playing);
-        for mut v in &mut q {
-            *v = Visibility::Hidden;
-        }
-    }
-    if keyboard.just_pressed(KeyCode::Escape) {
-        exit.write(AppExit::Success);
-    }
-}
-
 pub fn toggle_fullscreen(keyboard: Res<ButtonInput<KeyCode>>, mut window_q: Query<&mut Window>) {
     if keyboard.just_pressed(KeyCode::F11) {
         for mut w in &mut window_q {
@@ -1139,5 +1129,117 @@ pub fn rebind_system(keyboard: Res<ButtonInput<KeyCode>>, mut rebind: ResMut<Reb
             rebind.target = if target >= 2 { None } else { Some(target + 1) };
             break;
         }
+    }
+}
+
+pub fn menu_system(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut ui: ResMut<UiScreen>,
+    mut paused: ResMut<Paused>,
+    mut exit: MessageWriter<AppExit>,
+    mut world: ResMut<World>,
+    mut inventory: ResMut<Inventory>,
+    mut score: ResMut<Score>,
+    mut player_q: Query<&mut Transform, With<Player>>,
+) {
+    match ui.kind {
+        UiScreenKind::MainMenu => {
+            if keyboard.just_pressed(KeyCode::KeyN) || keyboard.just_pressed(KeyCode::Enter) {
+                // new game: reset
+                world.chunks.clear();
+                *inventory = Inventory::default();
+                *score = Score::default();
+                if let Ok(mut t) = player_q.single_mut() {
+                    t.translation.x = 40.0 * TILE_SIZE;
+                    t.translation.y = 20.0 * TILE_SIZE;
+                }
+                ui.kind = UiScreenKind::None;
+                next_state.set(GameState::Playing);
+            }
+            if keyboard.just_pressed(KeyCode::KeyL) {
+                // load slot 0
+                if let Ok(data) = std::fs::read_to_string("asterwild_save_0.json") {
+                    if let Ok(save) = serde_json::from_str::<SaveData>(&data) {
+                        if save.seed == world.seed {
+                            for chunk in world.chunks.values() {
+                                for e in chunk.entities.iter().flatten() { let _ = e; }
+                            }
+                            // simple: just set state; loading full would need despawn; skip for now
+                        }
+                    }
+                }
+                ui.kind = UiScreenKind::None;
+                next_state.set(GameState::Playing);
+            }
+            if keyboard.just_pressed(KeyCode::KeyS) {
+                ui.previous = UiScreenKind::MainMenu;
+                ui.kind = UiScreenKind::Settings;
+            }
+            if keyboard.just_pressed(KeyCode::Escape) {
+                exit.write(AppExit::Success);
+            }
+        }
+        UiScreenKind::Pause => {
+            if keyboard.just_pressed(KeyCode::Escape) {
+                ui.kind = UiScreenKind::None;
+                paused.0 = false;
+                next_state.set(GameState::Playing);
+            }
+            if keyboard.just_pressed(KeyCode::KeyK) {
+                // save
+            }
+            if keyboard.just_pressed(KeyCode::KeyS) {
+                ui.previous = UiScreenKind::Pause;
+                ui.kind = UiScreenKind::Settings;
+            }
+            if keyboard.just_pressed(KeyCode::KeyQ) {
+                ui.kind = UiScreenKind::MainMenu;
+                paused.0 = false;
+                next_state.set(GameState::Menu);
+            }
+        }
+        UiScreenKind::Settings => {
+            if keyboard.just_pressed(KeyCode::Escape) {
+                ui.kind = ui.previous;
+                if ui.kind == UiScreenKind::MainMenu {
+                    next_state.set(GameState::Menu);
+                } else {
+                    next_state.set(GameState::Playing);
+                    paused.0 = ui.kind == UiScreenKind::Pause;
+                }
+            }
+        }
+        UiScreenKind::None => {
+            // playing: ESC opens pause
+            if keyboard.just_pressed(KeyCode::Escape) {
+                ui.kind = UiScreenKind::Pause;
+                ui.previous = UiScreenKind::Pause;
+                paused.0 = true;
+            }
+        }
+    }
+}
+
+pub fn update_menu_visibility(
+    ui: Res<UiScreen>,
+    state: Res<State<GameState>>,
+    mut main_q: Query<&mut Visibility, (With<MainMenuUi>, Without<PauseMenuUi>, Without<SettingsUi>)>,
+    mut pause_q: Query<&mut Visibility, (With<PauseMenuUi>, Without<MainMenuUi>, Without<SettingsUi>)>,
+    mut settings_q: Query<&mut Visibility, (With<SettingsUi>, Without<MainMenuUi>, Without<PauseMenuUi>)>,
+) {
+    let show_main = *state == GameState::Menu && ui.kind == UiScreenKind::MainMenu;
+    let show_pause = *state == GameState::Playing && ui.kind == UiScreenKind::Pause;
+    let show_settings = ui.kind == UiScreenKind::Settings;
+    for mut v in &mut main_q { *v = if show_main { Visibility::Visible } else { Visibility::Hidden }; }
+    for mut v in &mut pause_q { *v = if show_pause { Visibility::Visible } else { Visibility::Hidden }; }
+    for mut v in &mut settings_q { *v = if show_settings { Visibility::Visible } else { Visibility::Hidden }; }
+}
+
+pub fn apply_pause_from_ui(paused: Res<Paused>, mut time: ResMut<Time<Virtual>>) {
+    if paused.0 {
+        time.set_relative_speed(0.0);
+    } else {
+        time.set_relative_speed(1.0);
     }
 }

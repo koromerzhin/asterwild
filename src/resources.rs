@@ -146,3 +146,22 @@ impl Default for KeyBindings {
 pub struct RebindState {
     pub target: Option<u8>, // 0=left,1=right,2=jump
 }
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum UiScreenKind {
+    MainMenu,
+    Pause,
+    Settings,
+    None,
+}
+
+#[derive(Resource)]
+pub struct UiScreen {
+    pub kind: UiScreenKind,
+    pub previous: UiScreenKind,
+}
+impl Default for UiScreen {
+    fn default() -> Self {
+        Self { kind: UiScreenKind::MainMenu, previous: UiScreenKind::MainMenu }
+    }
+}
