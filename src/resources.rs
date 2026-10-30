@@ -85,3 +85,13 @@ impl Default for AutoSaveTimer {
         Self { timer: 60.0 }
     }
 }
+
+#[derive(Resource)]
+pub struct SplashTimer {
+    pub timer: f32,
+}
+impl Default for SplashTimer {
+    fn default() -> Self {
+        Self { timer: 2.0 }
+    }
+}

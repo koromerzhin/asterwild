@@ -1,5 +1,6 @@
 use crate::blocks::{self, BlockType};
 use crate::components::*;
+use crate::components::SplashUi;
 use crate::components::MenuUi;
 use crate::components::GameState;
 use crate::components::MinimapCell;
@@ -996,6 +997,16 @@ pub fn toggle_fullscreen(keyboard: Res<ButtonInput<KeyCode>>, mut window_q: Quer
             } else {
                 WindowMode::Windowed
             };
+        }
+    }
+}
+
+pub fn splash_update(time: Res<Time>, mut timer: ResMut<SplashTimer>, mut next_state: ResMut<NextState<GameState>>, mut q: Query<&mut Visibility, With<SplashUi>>) {
+    timer.timer -= time.delta_secs();
+    if timer.timer <= 0.0 {
+        next_state.set(GameState::Menu);
+        for mut v in &mut q {
+            *v = Visibility::Hidden;
         }
     }
 }

@@ -71,6 +71,7 @@ pub struct MinimapCell {
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GameState {
     #[default]
+    Splash,
     Menu,
     Playing,
 }
@@ -78,3 +79,7 @@ pub enum GameState {
 
 #[derive(Component)]
 pub struct MenuUi;
+
+
+#[derive(Component)]
+pub struct SplashUi;
