@@ -630,11 +630,11 @@ pub fn crafting(keyboard: Res<ButtonInput<KeyCode>>, mut inventory: ResMut<Inven
 
 pub fn survival(
     time: Res<Time>,
-    mut player_q: Query<(&Transform, &mut Health), With<Player>>,
-    creatures: Query<&Transform, With<Creature>>,
+    mut player_q: Query<(&mut Transform, &mut Health), With<Player>>,
+    creatures: Query<&Transform, (With<Creature>, Without<Player>)>,
     shield: Res<Shield>,
 ) {
-    let Ok((pt, mut hp)) = player_q.single_mut() else {
+    let Ok((mut pt, mut hp)) = player_q.single_mut() else {
         return;
     };
     let mut damaged = false;
@@ -650,8 +650,9 @@ pub fn survival(
         hp.0 = (hp.0 + 5.0 * time.delta_secs()).min(100.0);
     }
     if hp.0 <= 0.0 {
-        // respawn
         hp.0 = 100.0;
+        pt.translation.x = 40.0 * TILE_SIZE;
+        pt.translation.y = 20.0 * TILE_SIZE;
     }
 }
 
