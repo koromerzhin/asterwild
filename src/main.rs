@@ -11,6 +11,7 @@ mod world;
 use bevy::prelude::*;
 use resources::DayNight;
 use resources::*;
+use resources::AudioStream;
 
 fn main() {
     App::new()
@@ -37,7 +38,8 @@ fn main() {
         .insert_resource(Paused::default())
         .insert_resource(WeatherTimer::default())
         .insert_resource(DayNight::default())
-        .add_systems(Startup, (setup::setup, systems::spawn_help))
+        .insert_resource(AudioStream::default())
+        .add_systems(Startup, (setup::setup, systems::spawn_help, systems::init_audio))
         .add_systems(Update, (systems::chunk_manager, systems::player_input, systems::physics, systems::camera_follow, systems::mouse_interact))
         .add_systems(Update, (systems::save_load, systems::day_night, systems::creature_ai, systems::hotbar_input, systems::crafting))
         .add_systems(Update, (systems::survival, systems::attack, systems::upgrade_weapon, systems::toggle_help, systems::update_hud))

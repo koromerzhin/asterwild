@@ -144,6 +144,7 @@ pub fn mouse_interact(
     mut inventory: ResMut<Inventory>,
     mut score: ResMut<Score>,
     selected: Res<SelectedBlock>,
+    audio: Res<AudioStream>,
     creatures: Query<(Entity, &Transform), With<Creature>>,
 ) {
     let Some(cursor_pos) = window.cursor_position() else {
@@ -181,6 +182,9 @@ pub fn mouse_interact(
                 }
                 if let Some(g) = chunk.glows[idx].take() {
                     commands.entity(g).despawn();
+                }
+                if let Some(sink) = &audio.sink {
+                    play_beep(sink, 440.0, 0.08);
                 }
                 chunk.blocks[idx] = None;
                 match bt {
@@ -938,4 +942,19 @@ pub fn update_minimap(
             bg.0 = color;
         }
     }
+}
+
+pub fn init_audio(mut audio: ResMut<AudioStream>) {
+    if let Ok(sink) = rodio::DeviceSinkBuilder::open_default_sink() {
+        audio.sink = Some(sink);
+    }
+}
+
+pub fn play_beep(sink: &rodio::MixerDeviceSink, freq: f32, dur: f32) {
+    use rodio::source::{SineWave, Source};
+    use std::time::Duration;
+    let source = SineWave::new(freq)
+        .take_duration(Duration::from_secs_f32(dur))
+        .amplify(0.2);
+    sink.mixer().add(source);
 }
