@@ -51,3 +51,13 @@ impl Default for DayNight {
 
 #[derive(Resource, Default)]
 pub struct Shield(pub bool);
+
+#[derive(Resource)]
+pub struct WeatherTimer {
+    pub timer: f32,
+}
+impl Default for WeatherTimer {
+    fn default() -> Self {
+        Self { timer: 0.0 }
+    }
+}
