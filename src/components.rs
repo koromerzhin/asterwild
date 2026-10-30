@@ -37,3 +37,10 @@ pub struct Star {
 
 #[derive(Component)]
 pub struct NightOverlay;
+
+
+#[derive(Component)]
+pub struct Particle {
+    pub lifetime: f32,
+    pub max_lifetime: f32,
+}

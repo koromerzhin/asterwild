@@ -182,6 +182,23 @@ pub fn mouse_interact(
                     BlockType::Torch => inventory.dirt += 1,
                     BlockType::Ladder => inventory.dirt += 1,
                 }
+                let px = tx as f32 * TILE_SIZE + TILE_SIZE / 2.0;
+                let py = ty as f32 * TILE_SIZE + TILE_SIZE / 2.0;
+                let col = bt.color();
+                for k in 0..6 {
+                    let vx = (blocks::hash2(k, ty, 123) - 0.5) * 120.0;
+                    let vy = (blocks::hash2(tx, k, 456) * 80.0) + 40.0;
+                    commands.spawn((
+                        Particle { lifetime: 0.6, max_lifetime: 0.6 },
+                        Sprite {
+                            color: col,
+                            custom_size: Some(Vec2::splat(4.0)),
+                            ..default()
+                        },
+                        Velocity(Vec2::new(vx, vy)),
+                        Transform::from_xyz(px, py, 0.0),
+                    ));
+                }
             }
         }
     } else if mouse_buttons.just_pressed(MouseButton::Right) {
@@ -652,5 +669,25 @@ pub fn night_overlay(
             t.translation.x = ct.translation.x;
             t.translation.y = ct.translation.y;
         }
+    }
+}
+
+pub fn particle_update(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut Particle, &mut Transform, &mut Sprite, &mut Velocity)>,
+) {
+    let dt = time.delta_secs();
+    for (e, mut p, mut t, mut sprite, mut vel) in &mut query {
+        p.lifetime -= dt;
+        if p.lifetime <= 0.0 {
+            commands.entity(e).despawn();
+            continue;
+        }
+        vel.0.y -= 400.0 * dt;
+        t.translation.x += vel.0.x * dt;
+        t.translation.y += vel.0.y * dt;
+        let alpha = (p.lifetime / p.max_lifetime).clamp(0.0, 1.0);
+        sprite.color = sprite.color.with_alpha(alpha);
     }
 }
