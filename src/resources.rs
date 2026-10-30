@@ -75,3 +75,13 @@ pub struct Paused(pub bool);
 pub struct AudioStream {
     pub sink: Option<rodio::MixerDeviceSink>,
 }
+
+#[derive(Resource)]
+pub struct AutoSaveTimer {
+    pub timer: f32,
+}
+impl Default for AutoSaveTimer {
+    fn default() -> Self {
+        Self { timer: 60.0 }
+    }
+}

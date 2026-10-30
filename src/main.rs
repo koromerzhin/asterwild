@@ -39,6 +39,7 @@ fn main() {
         .insert_resource(Paused::default())
         .insert_resource(WeatherTimer::default())
         .insert_resource(DayNight::default())
+        .insert_resource(AutoSaveTimer::default())
         .init_state::<GameState>()
         .insert_resource(AudioStream::default())
         .add_systems(Startup, (setup::setup, systems::spawn_help, systems::init_audio))
