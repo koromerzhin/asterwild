@@ -93,3 +93,13 @@ pub struct CreditsUi;
 pub struct Cloud {
     pub speed: f32,
 }
+
+
+#[derive(Component)]
+pub struct MainMenuUi;
+
+#[derive(Component)]
+pub struct PauseMenuUi;
+
+#[derive(Component)]
+pub struct SettingsUi;

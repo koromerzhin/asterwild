@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::blocks::{self, BlockType};
-use crate::components::{Cloud, Creature, CreditsUi, Grounded, Health, Hud, InventoryUi, MenuUi, Minimap, MinimapCell, NightOverlay, PauseUi, Player, SplashUi, Star, Velocity};
+use crate::components::{Cloud, Creature, CreditsUi, Grounded, Health, Hud, InventoryUi, MainMenuUi, MenuUi, Minimap, MinimapCell, NightOverlay, PauseMenuUi, PauseUi, Player, SettingsUi, SplashUi, Star, Velocity};
 use crate::resources::{Inventory, Score};
 use crate::save::SaveData;
 use crate::world::{self, CHUNK_W, Chunk, TILE_SIZE, WORLD_H, World};
@@ -270,6 +270,49 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
             Transform::from_xyz(x, y, -3.0),
         ));
     }
+
+    // Main menu
+    commands.spawn((
+        MainMenuUi,
+        Text::new("ASTERWILD\n\n[N] New Game\n[L] Load Game\n[S] Settings\n[ESC] Quit"),
+        TextFont { font_size: FontSize::Px(28.0), ..default() },
+        TextColor(Color::WHITE),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Percent(30.0),
+            left: Val::Percent(32.0),
+            ..default()
+        },
+        Visibility::Visible,
+    ));
+    // Pause menu
+    commands.spawn((
+        PauseMenuUi,
+        Text::new("PAUSED\n\n[K] Save\n[S] Settings\n[ESC] Resume\n[Q] Quit to menu"),
+        TextFont { font_size: FontSize::Px(28.0), ..default() },
+        TextColor(Color::WHITE),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Percent(30.0),
+            left: Val::Percent(32.0),
+            ..default()
+        },
+        Visibility::Hidden,
+    ));
+    // Settings
+    commands.spawn((
+        SettingsUi,
+        Text::new("SETTINGS\n\nF7: Rebind movement\nF3/F4: Volume\nM: Mute\nF11: Fullscreen\n\nESC: Back"),
+        TextFont { font_size: FontSize::Px(24.0), ..default() },
+        TextColor(Color::WHITE),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Percent(30.0),
+            left: Val::Percent(32.0),
+            ..default()
+        },
+        Visibility::Hidden,
+    ));
 
     commands.spawn((
         Hud,
