@@ -22,7 +22,7 @@ pub fn collides(world: &World, px: f32, py: f32) -> bool {
 
     for ty in min_y..=max_y {
         for tx in min_x..=max_x {
-            if world.get(tx, ty).is_some() {
+            if world.is_solid(tx, ty) {
                 return true;
             }
         }
@@ -182,6 +182,7 @@ pub fn mouse_interact(
                     BlockType::Torch => inventory.dirt += 1,
                     BlockType::Ladder => inventory.dirt += 1,
                     BlockType::Water => {}
+                    BlockType::Door | BlockType::DoorOpen => inventory.dirt += 1,
                 }
                 let px = tx as f32 * TILE_SIZE + TILE_SIZE / 2.0;
                 let py = ty as f32 * TILE_SIZE + TILE_SIZE / 2.0;
@@ -207,7 +208,7 @@ pub fn mouse_interact(
         if world.get(tx, ty).is_none() {
             let bt = selected.0;
             let have = match bt {
-                BlockType::Dirt | BlockType::Sand | BlockType::Snow | BlockType::Torch | BlockType::Ladder | BlockType::Water => {
+                BlockType::Dirt | BlockType::Sand | BlockType::Snow | BlockType::Torch | BlockType::Ladder | BlockType::Water | BlockType::Door | BlockType::DoorOpen => {
                     &mut inventory.dirt
                 }
                 BlockType::Stone => &mut inventory.stone,
@@ -455,7 +456,7 @@ pub fn creature_collides(world: &World, px: f32, py: f32) -> bool {
     let max_y = ((top - 0.001) / TILE_SIZE).floor() as i32;
     for ty in min_y..=max_y {
         for tx in min_x..=max_x {
-            if world.get(tx, ty).is_some() {
+            if world.is_solid(tx, ty) {
                 return true;
             }
         }
@@ -742,3 +743,33 @@ pub fn water_flow(
         }
     }
 }
+
+pub fn toggle_door(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+    mut world: ResMut<World>,
+    player_q: Query<&Transform, With<Player>>,
+) {
+    if !keyboard.just_pressed(KeyCode::KeyE) {
+        return;
+    }
+    let Ok(pt) = player_q.single() else { return; };
+    let px = (pt.translation.x / TILE_SIZE).floor() as i32;
+    let py = (pt.translation.y / TILE_SIZE).floor() as i32;
+    for (dx, dy) in [(1i32,0i32),(-1,0),(0,1),(0,-1)] {
+        let x = px + dx;
+        let y = py + dy;
+        let cx = World::chunk_x(x);
+        world.ensure_chunk(&mut commands, cx);
+        if let Some(chunk) = world.chunks.get_mut(&cx) {
+            let lx = World::local_x(x);
+            let idx = World::block_index(lx, y);
+            match chunk.blocks[idx] {
+                Some(BlockType::Door) => chunk.blocks[idx] = Some(BlockType::DoorOpen),
+                Some(BlockType::DoorOpen) => chunk.blocks[idx] = Some(BlockType::Door),
+                _ => {}
+            }
+        }
+    }
+}
+
