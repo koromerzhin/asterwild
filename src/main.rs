@@ -56,6 +56,11 @@ struct Inventory {
     ore: u32,
 }
 
+#[derive(Resource, Default)]
+struct Score {
+    kills: u32,
+}
+
 #[derive(Resource)]
 struct DayNight {
     time: f32,
@@ -95,6 +100,7 @@ fn main() {
             ..default()
         }))
         .insert_resource(Inventory::default())
+        .insert_resource(Score::default())
         .insert_resource(DayNight::default())
         .insert_resource(ClearColor(Color::srgb(0.5, 0.7, 1.0)))
         .add_systems(Startup, setup)
@@ -339,6 +345,8 @@ fn mouse_interact(
     mut commands: Commands,
     mut grid: ResMut<WorldGrid>,
     mut inventory: ResMut<Inventory>,
+    mut score: ResMut<Score>,
+    creatures: Query<(Entity, &Transform), With<Creature>>,
 ) {
     let Some(cursor_pos) = window.cursor_position() else {
         return;
@@ -354,6 +362,15 @@ fn mouse_interact(
     let ty = (world_pos.y / TILE_SIZE).floor() as i32;
 
     if mouse_buttons.just_pressed(MouseButton::Left) {
+        // combat: hit creature near cursor
+        for (e, t) in &creatures {
+            let d = t.translation.truncate() - world_pos;
+            if d.length() < 18.0 {
+                commands.entity(e).despawn();
+                score.kills += 1;
+                return;
+            }
+        }
         // break
         if let Some(bt) = grid.get(tx, ty) {
             let idx = grid.idx(tx, ty).unwrap();
@@ -395,9 +412,9 @@ fn mouse_interact(
     }
 }
 
-fn update_hud(inventory: Res<Inventory>, mut q: Query<&mut Text, With<Hud>>) {
+fn update_hud(inventory: Res<Inventory>, score: Res<Score>, mut q: Query<&mut Text, With<Hud>>) {
     for mut t in &mut q {
-        t.0 = format!("Dirt: {}  Stone: {}  Ore: {}", inventory.dirt, inventory.stone, inventory.ore);
+        t.0 = format!("Dirt: {}  Stone: {}  Ore: {}  Kills: {}", inventory.dirt, inventory.stone, inventory.ore, score.kills);
     }
 }
 
