@@ -1,5 +1,6 @@
 use crate::blocks::{self, BlockType};
 use crate::components::*;
+use crate::components::Cloud;
 use crate::components::CreditsUi;
 use crate::components::SplashUi;
 use crate::components::MenuUi;
@@ -1097,5 +1098,20 @@ pub fn volume_control(keyboard: Res<ButtonInput<KeyCode>>, mut volume: ResMut<Vo
     }
     if keyboard.just_pressed(KeyCode::F4) {
         volume.0 = (volume.0 + 0.1).clamp(0.0, 1.0);
+    }
+}
+
+pub fn cloud_update(time: Res<Time>, mut clouds: Query<(&Cloud, &mut Transform)>, camera_q: Query<&Transform, (With<Camera2d>, Without<Cloud>)>) {
+    let dt = time.delta_secs();
+    let cam_x = camera_q.single().map(|t| t.translation.x).unwrap_or(0.0);
+    for (cloud, mut t) in &mut clouds {
+        t.translation.x += cloud.speed * dt;
+        // wrap around camera
+        if t.translation.x - cam_x > 600.0 {
+            t.translation.x = cam_x - 600.0;
+        }
+        if t.translation.x - cam_x < -600.0 {
+            t.translation.x = cam_x + 600.0;
+        }
     }
 }

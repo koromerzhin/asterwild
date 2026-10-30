@@ -87,3 +87,9 @@ pub struct SplashUi;
 
 #[derive(Component)]
 pub struct CreditsUi;
+
+
+#[derive(Component)]
+pub struct Cloud {
+    pub speed: f32,
+}

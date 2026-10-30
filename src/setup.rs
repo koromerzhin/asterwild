@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::blocks::{self, BlockType};
-use crate::components::{Creature, CreditsUi, Grounded, Health, Hud, InventoryUi, MenuUi, Minimap, MinimapCell, NightOverlay, PauseUi, Player, SplashUi, Star, Velocity};
+use crate::components::{Cloud, Creature, CreditsUi, Grounded, Health, Hud, InventoryUi, MenuUi, Minimap, MinimapCell, NightOverlay, PauseUi, Player, SplashUi, Star, Velocity};
 use crate::resources::{Inventory, Score};
 use crate::save::SaveData;
 use crate::world::{self, CHUNK_W, Chunk, TILE_SIZE, WORLD_H, World};
@@ -256,6 +256,20 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
         },
         Visibility::Hidden,
     ));
+
+    for i in 0..8 {
+        let x = (i as f32 - 4.0) * 200.0;
+        let y = 15.0 * TILE_SIZE + (i as f32 * 37.0).sin() * 40.0;
+        commands.spawn((
+            Cloud { speed: 5.0 + i as f32 * 2.0 },
+            Sprite {
+                color: Color::srgba(1.0, 1.0, 1.0, 0.15),
+                custom_size: Some(Vec2::new(120.0, 40.0)),
+                ..default()
+            },
+            Transform::from_xyz(x, y, -3.0),
+        ));
+    }
 
     commands.spawn((
         Hud,
