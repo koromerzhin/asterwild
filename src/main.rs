@@ -52,6 +52,7 @@ fn main() {
                 systems::upgrade_weapon,
                 systems::toggle_help,
                 systems::update_hud,
+                systems::starfield_update,
             )
                 .chain(),
         )

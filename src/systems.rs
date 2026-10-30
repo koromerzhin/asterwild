@@ -608,3 +608,14 @@ pub fn toggle_help(
         };
     }
 }
+
+pub fn starfield_update(time: Res<Time>, camera_q: Query<&Transform, (With<Camera2d>, Without<Star>)>, mut stars: Query<(&Star, &mut Transform, &mut Sprite), Without<Camera2d>>) {
+    let cam_pos = camera_q.single().map(|t| t.translation.truncate()).unwrap_or(Vec2::ZERO);
+    for (star, mut t, mut sprite) in &mut stars {
+        let pos = star.base + cam_pos * 0.3;
+        t.translation.x = pos.x;
+        t.translation.y = pos.y;
+        let alpha = 0.5 + 0.5 * (time.elapsed_secs() + star.phase).sin();
+        sprite.color = Color::srgba(1.0, 1.0, 1.0, alpha.clamp(0.2, 1.0));
+    }
+}

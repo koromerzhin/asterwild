@@ -26,3 +26,10 @@ pub struct Hud;
 
 #[derive(Component)]
 pub struct HelpText;
+
+
+#[derive(Component)]
+pub struct Star {
+    pub base: Vec2,
+    pub phase: f32,
+}
