@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::blocks::{self, BlockType};
-use crate::components::{Creature, Grounded, Health, Hud, Player, Velocity};
+use crate::components::{Creature, Grounded, Health, Hud, Player, Star, Velocity};
 use crate::resources::{Inventory, Score};
 use crate::save::SaveData;
 use crate::world::{self, CHUNK_W, Chunk, TILE_SIZE, WORLD_H, World};
@@ -123,6 +123,24 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
                 ..default()
             },
             Transform::from_xyz(cx as f32 * TILE_SIZE, (sy as f32 + 1.0) * TILE_SIZE, 1.0),
+        ));
+    }
+
+    // Starfield
+    for i in 0..300 {
+        let x = (blocks::hash2(i as i32, 0, 999) * 2.0 - 1.0) * 40.0 * world::TILE_SIZE;
+        let y = (blocks::hash2(0, i as i32, 777) * 2.0 - 1.0) * 20.0 * world::TILE_SIZE + 10.0 * world::TILE_SIZE;
+        commands.spawn((
+            Star {
+                base: Vec2::new(x, y),
+                phase: blocks::hash2(i as i32, i as i32, 555) * 6.28,
+            },
+            Sprite {
+                color: Color::srgba(1.0, 1.0, 1.0, 0.8),
+                custom_size: Some(Vec2::splat(2.0)),
+                ..default()
+            },
+            Transform::from_xyz(x, y, -5.0),
         ));
     }
 
