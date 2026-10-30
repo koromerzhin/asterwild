@@ -62,3 +62,6 @@ impl Default for WeatherTimer {
         Self { timer: 0.0 }
     }
 }
+
+#[derive(Resource, Default)]
+pub struct Jetpack(pub bool);

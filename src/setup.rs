@@ -96,6 +96,7 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
         Grounded(false),
         Health(100.0),
         crate::components::Facing(1.0),
+        crate::components::JumpsLeft(1),
         Sprite {
             color: Color::srgb(0.2, 0.5, 0.9),
             custom_size: Some(Vec2::new(

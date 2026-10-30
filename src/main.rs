@@ -33,12 +33,13 @@ fn main() {
         .insert_resource(HelpVisible::default())
         .insert_resource(WeaponLevel::default())
         .insert_resource(Shield::default())
+        .insert_resource(Jetpack::default())
         .insert_resource(WeatherTimer::default())
         .insert_resource(DayNight::default())
         .add_systems(Startup, (setup::setup, systems::spawn_help))
         .add_systems(Update, (systems::chunk_manager, systems::player_input, systems::physics, systems::camera_follow, systems::mouse_interact))
         .add_systems(Update, (systems::save_load, systems::day_night, systems::creature_ai, systems::hotbar_input, systems::crafting))
         .add_systems(Update, (systems::survival, systems::attack, systems::upgrade_weapon, systems::toggle_help, systems::update_hud))
-        .add_systems(Update, (systems::starfield_update, systems::night_overlay, systems::particle_update, systems::toggle_door, systems::toggle_shield, systems::water_flow, systems::weather, systems::toggle_inventory, systems::update_inventory_ui, systems::smelt))
+        .add_systems(Update, (systems::starfield_update, systems::night_overlay, systems::particle_update, systems::toggle_door, systems::toggle_shield, systems::water_flow, systems::weather, systems::toggle_inventory, systems::update_inventory_ui, systems::smelt, systems::toggle_jetpack))
         .run();
 }
