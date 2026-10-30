@@ -817,3 +817,30 @@ pub fn weather(
         ));
     }
 }
+
+pub fn toggle_inventory(keyboard: Res<ButtonInput<KeyCode>>, mut q: Query<&mut Visibility, With<InventoryUi>>) {
+    // reuse HelpVisible? Better separate. We'll just toggle visibility directly.
+    if keyboard.just_pressed(KeyCode::KeyI) {
+        for mut v in &mut q {
+            *v = match *v {
+                Visibility::Hidden => Visibility::Visible,
+                _ => Visibility::Hidden,
+            };
+        }
+    }
+}
+
+pub fn update_inventory_ui(
+    inventory: Res<Inventory>,
+    score: Res<Score>,
+    weapon: Res<WeaponLevel>,
+    shield: Res<Shield>,
+    mut q: Query<&mut Text, With<InventoryUi>>,
+) {
+    for mut t in &mut q {
+        t.0 = format!(
+            "Inventory\nDirt: {}\nStone: {}\nOre: {}\nKills: {}\nWeapon: {}\nShield: {}",
+            inventory.dirt, inventory.stone, inventory.ore, score.kills, weapon.0, shield.0
+        );
+    }
+}

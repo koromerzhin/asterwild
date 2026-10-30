@@ -44,3 +44,7 @@ pub struct Particle {
     pub lifetime: f32,
     pub max_lifetime: f32,
 }
+
+
+#[derive(Component)]
+pub struct InventoryUi;

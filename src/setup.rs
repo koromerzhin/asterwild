@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::blocks::{self, BlockType};
-use crate::components::{Creature, Grounded, Health, Hud, NightOverlay, Player, Star, Velocity};
+use crate::components::{Creature, Grounded, Health, Hud, InventoryUi, NightOverlay, Player, Star, Velocity};
 use crate::resources::{Inventory, Score};
 use crate::save::SaveData;
 use crate::world::{self, CHUNK_W, Chunk, TILE_SIZE, WORLD_H, World};
@@ -152,6 +152,22 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 20.0),
+    ));
+
+    commands.spawn((
+        InventoryUi,
+        Text::new("Inventory"),
+        TextFont { font_size: FontSize::Px(14.0), ..default() },
+        TextColor(Color::WHITE),
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(40),
+            left: px(8),
+            padding: UiRect::all(px(8)),
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
+        Visibility::Hidden,
     ));
 
     commands.spawn((
