@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::blocks::{self, BlockType};
-use crate::components::{Creature, Grounded, Health, Hud, InventoryUi, Minimap, MinimapCell, NightOverlay, PauseUi, Player, Star, Velocity};
+use crate::components::{Creature, Grounded, Health, Hud, InventoryUi, MenuUi, Minimap, MinimapCell, NightOverlay, PauseUi, Player, Star, Velocity};
 use crate::resources::{Inventory, Score};
 use crate::save::SaveData;
 use crate::world::{self, CHUNK_W, Chunk, TILE_SIZE, WORLD_H, World};
@@ -216,6 +216,19 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
                 }
             }
         });
+
+    commands.spawn((
+        MenuUi,
+        Text::new("ASTERWILD\n\nPress ENTER to play"),
+        TextFont { font_size: FontSize::Px(32.0), ..default() },
+        TextColor(Color::WHITE),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Percent(35.0),
+            left: Val::Percent(35.0),
+            ..default()
+        },
+    ));
 
     commands.spawn((
         Hud,
