@@ -208,6 +208,9 @@ struct Velocity(Vec2);
 struct Grounded(bool);
 
 #[derive(Component)]
+struct Health(f32);
+
+#[derive(Component)]
 struct Creature {
     dir: f32,
     timer: f32,
@@ -245,6 +248,8 @@ fn main() {
                 day_night,
                 creature_ai,
                 hotbar_input,
+                crafting,
+                survival,
                 update_hud,
             ),
         )
@@ -323,6 +328,7 @@ fn setup(mut commands: Commands, mut world: ResMut<World>) {
         Player,
         Velocity(Vec2::ZERO),
         Grounded(false),
+        Health(100.0),
         Sprite {
             color: Color::srgb(0.2, 0.5, 0.9),
             custom_size: Some(Vec2::new(PLAYER_HALF_W * 2.0, PLAYER_HALF_H * 2.0)),
@@ -558,9 +564,10 @@ fn mouse_interact(
     }
 }
 
-fn update_hud(inventory: Res<Inventory>, score: Res<Score>, selected: Res<SelectedBlock>, mut q: Query<&mut Text, With<Hud>>) {
+fn update_hud(inventory: Res<Inventory>, score: Res<Score>, selected: Res<SelectedBlock>, player_q: Query<&Health, With<Player>>, mut q: Query<&mut Text, With<Hud>>) {
     for mut t in &mut q {
-        t.0 = format!("Dirt: {} Stone: {} Ore: {} Kills: {} | Place: {:?}", inventory.dirt, inventory.stone, inventory.ore, score.kills, selected.0);
+        let hp = player_q.single().map(|h| h.0).unwrap_or(0.0);
+        t.0 = format!("HP: {:.0} | Dirt: {} Stone: {} Ore: {} Kills: {} | Place: {:?}", hp, inventory.dirt, inventory.stone, inventory.ore, score.kills, selected.0);
     }
 }
 
@@ -866,5 +873,37 @@ fn hotbar_input(keyboard: Res<ButtonInput<KeyCode>>, mut selected: ResMut<Select
     }
     if keyboard.just_pressed(KeyCode::Digit3) {
         selected.0 = BlockType::Ore;
+    }
+}
+
+fn crafting(keyboard: Res<ButtonInput<KeyCode>>, mut inventory: ResMut<Inventory>) {
+    if keyboard.just_pressed(KeyCode::KeyC) {
+        if inventory.dirt >= 4 {
+            inventory.dirt -= 4;
+            inventory.stone += 1;
+        }
+    }
+}
+
+fn survival(
+    time: Res<Time>,
+    mut player_q: Query<(&Transform, &mut Health), With<Player>>,
+    creatures: Query<&Transform, With<Creature>>,
+) {
+    let Ok((pt, mut hp)) = player_q.single_mut() else { return; };
+    let mut damaged = false;
+    for ct in &creatures {
+        if (ct.translation.truncate() - pt.translation.truncate()).length() < 20.0 {
+            damaged = true;
+        }
+    }
+    if damaged {
+        hp.0 -= 10.0 * time.delta_secs();
+    } else {
+        hp.0 = (hp.0 + 5.0 * time.delta_secs()).min(100.0);
+    }
+    if hp.0 <= 0.0 {
+        // respawn
+        hp.0 = 100.0;
     }
 }
