@@ -280,17 +280,39 @@ pub fn update_hud(
     score: Res<Score>,
     selected: Res<SelectedBlock>,
     weapon: Res<WeaponLevel>,
-    player_q: Query<&Health, With<Player>>,
+    shield: Res<Shield>,
+    jetpack: Res<Jetpack>,
+    world: Res<World>,
+    player_q: Query<(&Health, &Transform), With<Player>>,
     mut q: Query<&mut Text, With<Hud>>,
 ) {
     for mut t in &mut q {
-        let hp = player_q.single().map(|h| h.0).unwrap_or(0.0);
+        let (hp, biome) = player_q
+            .single()
+            .map(|(h, tr)| (h.0, blocks::biome_at((tr.translation.x / TILE_SIZE) as i32, world.seed)))
+            .unwrap_or((0.0, blocks::Biome::Forest));
+        let bname = match biome {
+            blocks::Biome::Forest => "Forest",
+            blocks::Biome::Desert => "Desert",
+            blocks::Biome::Snow => "Snow",
+        };
         t.0 = format!(
-            "HP: {:.0} | Dirt: {} Stone: {} Ore: {} Kills: {} Wpn: {} | Place: {:?}",
-            hp, inventory.dirt, inventory.stone, inventory.ore, score.kills, weapon.0, selected.0
+            "HP: {:.0} Sh: {} Jp: {} | Biome: {} | Dirt: {} Stone: {} Ore: {} Ingot: {} Kills: {} Wpn: {} | Place: {:?}",
+            hp,
+            if shield.0 { "Y" } else { "N" },
+            if jetpack.0 { "Y" } else { "N" },
+            bname,
+            inventory.dirt,
+            inventory.stone,
+            inventory.ore,
+            inventory.ingot,
+            score.kills,
+            weapon.0,
+            selected.0
         );
     }
 }
+
 
 pub fn save_load(
     keyboard: Res<ButtonInput<KeyCode>>,
