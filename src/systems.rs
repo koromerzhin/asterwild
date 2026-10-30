@@ -287,21 +287,22 @@ pub fn update_hud(
     mut q: Query<&mut Text, With<Hud>>,
 ) {
     for mut t in &mut q {
-        let (hp, biome) = player_q
+        let (hp, biome, px, py) = player_q
             .single()
-            .map(|(h, tr)| (h.0, blocks::biome_at((tr.translation.x / TILE_SIZE) as i32, world.seed)))
-            .unwrap_or((0.0, blocks::Biome::Forest));
+            .map(|(h, tr)| (h.0, blocks::biome_at((tr.translation.x / TILE_SIZE) as i32, world.seed), tr.translation.x, tr.translation.y))
+            .unwrap_or((0.0, blocks::Biome::Forest, 0.0, 0.0));
         let bname = match biome {
             blocks::Biome::Forest => "Forest",
             blocks::Biome::Desert => "Desert",
             blocks::Biome::Snow => "Snow",
         };
         t.0 = format!(
-            "HP: {:.0} Sh: {} Jp: {} | Biome: {} | Dirt: {} Stone: {} Ore: {} Ingot: {} Kills: {} Wpn: {} | Place: {:?}",
+            "HP: {:.0} Sh: {} Jp: {} | Biome: {} | Pos: {:.0},{:.0} | Dirt: {} Stone: {} Ore: {} Ingot: {} Kills: {} Wpn: {} | Place: {:?}",
             hp,
             if shield.0 { "Y" } else { "N" },
             if jetpack.0 { "Y" } else { "N" },
             bname,
+            px, py,
             inventory.dirt,
             inventory.stone,
             inventory.ore,
