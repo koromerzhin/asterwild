@@ -218,6 +218,14 @@ struct AttackCooldown {
     timer: f32,
 }
 
+#[derive(Resource)]
+struct HelpVisible(bool);
+impl Default for HelpVisible {
+    fn default() -> Self {
+        Self(true)
+    }
+}
+
 #[derive(Component)]
 struct Creature {
     dir: f32,
@@ -226,6 +234,9 @@ struct Creature {
 
 #[derive(Component)]
 struct Hud;
+
+#[derive(Component)]
+struct HelpText;
 
 fn main() {
     App::new()
@@ -242,9 +253,10 @@ fn main() {
         .insert_resource(Score::default())
         .insert_resource(SelectedBlock::default())
         .insert_resource(AttackCooldown::default())
+        .insert_resource(HelpVisible::default())
         .insert_resource(DayNight::default())
         .insert_resource(ClearColor(Color::srgb(0.5, 0.7, 1.0)))
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, spawn_help))
         .add_systems(
             Update,
             (
@@ -260,6 +272,7 @@ fn main() {
                 crafting,
                 survival,
                 attack,
+                toggle_help,
                 update_hud,
             ),
         )
@@ -948,5 +961,34 @@ fn survival(
     if hp.0 <= 0.0 {
         // respawn
         hp.0 = 100.0;
+    }
+}
+
+fn spawn_help(mut commands: Commands) {
+    commands.spawn((
+        HelpText,
+        Text::new(
+            "Controls: A/D move, Space/W jump, Mouse L break/hit, Mouse R place, 1/2/3 select block, C craft, F attack, S save, L load, H toggle help",
+        ),
+        TextFont {
+            font_size: FontSize::Px(14.0),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 0.6)),
+        Node {
+            position_type: PositionType::Absolute,
+            bottom: px(8),
+            left: px(8),
+            ..default()
+        },
+    ));
+}
+
+fn toggle_help(keyboard: Res<ButtonInput<KeyCode>>, mut vis: ResMut<HelpVisible>, mut q: Query<&mut Visibility, With<HelpText>>) {
+    if keyboard.just_pressed(KeyCode::KeyH) {
+        vis.0 = !vis.0;
+    }
+    for mut v in &mut q {
+        *v = if vis.0 { Visibility::Visible } else { Visibility::Hidden };
     }
 }
