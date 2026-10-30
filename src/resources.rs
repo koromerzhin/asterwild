@@ -15,6 +15,7 @@ pub struct Inventory {
 pub struct Score {
     pub kills: u32,
     pub days: u32,
+    pub deaths: u32,
 }
 
 #[derive(Resource)]
