@@ -220,6 +220,9 @@ struct AttackCooldown {
 
 #[derive(Resource)]
 struct HelpVisible(bool);
+
+#[derive(Resource, Default)]
+struct WeaponLevel(u32);
 impl Default for HelpVisible {
     fn default() -> Self {
         Self(true)
@@ -254,6 +257,7 @@ fn main() {
         .insert_resource(SelectedBlock::default())
         .insert_resource(AttackCooldown::default())
         .insert_resource(HelpVisible::default())
+        .insert_resource(WeaponLevel::default())
         .insert_resource(DayNight::default())
         .insert_resource(ClearColor(Color::srgb(0.5, 0.7, 1.0)))
         .add_systems(Startup, (setup, spawn_help))
@@ -273,6 +277,7 @@ fn main() {
                 survival,
                 attack,
                 toggle_help,
+                upgrade_weapon,
                 update_hud,
             ),
         )
@@ -593,10 +598,10 @@ fn mouse_interact(
     }
 }
 
-fn update_hud(inventory: Res<Inventory>, score: Res<Score>, selected: Res<SelectedBlock>, player_q: Query<&Health, With<Player>>, mut q: Query<&mut Text, With<Hud>>) {
+fn update_hud(inventory: Res<Inventory>, score: Res<Score>, selected: Res<SelectedBlock>, weapon: Res<WeaponLevel>, player_q: Query<&Health, With<Player>>, mut q: Query<&mut Text, With<Hud>>) {
     for mut t in &mut q {
         let hp = player_q.single().map(|h| h.0).unwrap_or(0.0);
-        t.0 = format!("HP: {:.0} | Dirt: {} Stone: {} Ore: {} Kills: {} | Place: {:?}", hp, inventory.dirt, inventory.stone, inventory.ore, score.kills, selected.0);
+        t.0 = format!("HP: {:.0} | Dirt: {} Stone: {} Ore: {} Kills: {} Wpn: {} | Place: {:?}", hp, inventory.dirt, inventory.stone, inventory.ore, score.kills, weapon.0, selected.0);
     }
 }
 
@@ -857,6 +862,7 @@ fn attack(
     player_q: Query<(&Transform, &Facing), With<Player>>,
     mut commands: Commands,
     mut score: ResMut<Score>,
+    weapon: Res<WeaponLevel>,
     creatures: Query<(Entity, &Transform), With<Creature>>,
 ) {
     cooldown.timer = (cooldown.timer - time.delta_secs()).max(0.0);
@@ -865,13 +871,23 @@ fn attack(
             let pp = pt.translation.truncate();
             for (e, t) in &creatures {
                 let d = t.translation.truncate() - pp;
-                if d.length() < 48.0 && d.x * facing.0 >= 0.0 {
+                let range = 48.0 + weapon.0 as f32 * 16.0;
+                if d.length() < range && d.x * facing.0 >= 0.0 {
                     commands.entity(e).despawn();
                     score.kills += 1;
                 }
             }
         }
         cooldown.timer = 0.5;
+    }
+}
+
+
+
+fn upgrade_weapon(keyboard: Res<ButtonInput<KeyCode>>, mut inventory: ResMut<Inventory>, mut weapon: ResMut<WeaponLevel>) {
+    if keyboard.just_pressed(KeyCode::KeyQ) && inventory.ore >= 5 {
+        inventory.ore -= 5;
+        weapon.0 += 1;
     }
 }
 
