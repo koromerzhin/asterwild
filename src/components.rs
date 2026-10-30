@@ -66,3 +66,15 @@ pub struct MinimapCell {
     pub dx: i32,
     pub dy: i32,
 }
+
+
+#[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GameState {
+    #[default]
+    Menu,
+    Playing,
+}
+
+
+#[derive(Component)]
+pub struct MenuUi;

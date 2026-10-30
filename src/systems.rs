@@ -1,5 +1,7 @@
 use crate::blocks::{self, BlockType};
 use crate::components::*;
+use crate::components::MenuUi;
+use crate::components::GameState;
 use crate::components::MinimapCell;
 use crate::resources::DayNight;
 use crate::resources::*;
@@ -957,4 +959,13 @@ pub fn play_beep(sink: &rodio::MixerDeviceSink, freq: f32, dur: f32) {
         .take_duration(Duration::from_secs_f32(dur))
         .amplify(0.2);
     sink.mixer().add(source);
+}
+
+pub fn menu_input(keyboard: Res<ButtonInput<KeyCode>>, mut next_state: ResMut<NextState<GameState>>, mut q: Query<&mut Visibility, With<MenuUi>>) {
+    if keyboard.just_pressed(KeyCode::Enter) {
+        next_state.set(GameState::Playing);
+        for mut v in &mut q {
+            *v = Visibility::Hidden;
+        }
+    }
 }
