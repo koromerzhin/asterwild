@@ -125,3 +125,24 @@ pub struct AudioQueue {
 
 #[derive(Resource, Default)]
 pub struct Muted(pub bool);
+
+#[derive(Resource)]
+pub struct KeyBindings {
+    pub left: KeyCode,
+    pub right: KeyCode,
+    pub jump: KeyCode,
+}
+impl Default for KeyBindings {
+    fn default() -> Self {
+        Self {
+            left: KeyCode::KeyA,
+            right: KeyCode::KeyD,
+            jump: KeyCode::Space,
+        }
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct RebindState {
+    pub target: Option<u8>, // 0=left,1=right,2=jump
+}
