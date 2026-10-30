@@ -9,6 +9,8 @@ authors = ["koromerzhin"]
 
 [dependencies]
 bevy = "0.20"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [profile.dev]
 opt-level = 1
