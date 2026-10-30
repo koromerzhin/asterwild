@@ -7,6 +7,7 @@ use crate::components::GameState;
 use crate::components::MinimapCell;
 use crate::resources::DayNight;
 use crate::resources::*;
+use crate::resources::AudioEvent;
 use crate::save::SaveData;
 use crate::world::{
     CHUNK_W, Chunk, ChunkData, GRAVITY, JUMP_SPEED, LOAD_RADIUS, MAX_FALL, MOVE_SPEED,
@@ -62,6 +63,7 @@ pub fn physics(
     keyboard: Res<ButtonInput<KeyCode>>,
     world: Res<World>,
     jetpack: Res<Jetpack>,
+    mut audio_queue: ResMut<AudioQueue>,
     mut query: Query<(&mut Transform, &mut Velocity, &mut Grounded, &mut JumpsLeft), With<Player>>,
 ) {
     let dt = time.delta_secs();
@@ -101,6 +103,9 @@ pub fn physics(
             } else if jetpack.0 && jumps.0 > 0 {
                 vel.0.y = JUMP_SPEED;
                 jumps.0 -= 1;
+            }
+            if jump_pressed {
+                audio_queue.events.push(AudioEvent::Jump);
             }
         }
         if grounded.0 {
@@ -150,6 +155,7 @@ pub fn mouse_interact(
     mut score: ResMut<Score>,
     selected: Res<SelectedBlock>,
     audio: Res<AudioStream>,
+    mut audio_queue: ResMut<AudioQueue>,
     creatures: Query<(Entity, &Transform), With<Creature>>,
 ) {
     let Some(cursor_pos) = window.cursor_position() else {
@@ -239,6 +245,7 @@ pub fn mouse_interact(
                 if bt != BlockType::Water {
                     *have -= 1;
                 }
+                audio_queue.events.push(AudioEvent::Place);
                 let cx = World::chunk_x(tx);
                 world.ensure_chunk(&mut commands, cx);
                 let e = commands
@@ -595,10 +602,12 @@ pub fn attack(
     mut commands: Commands,
     mut score: ResMut<Score>,
     weapon: Res<WeaponLevel>,
+    mut audio_queue: ResMut<AudioQueue>,
     creatures: Query<(Entity, &Transform), With<Creature>>,
 ) {
     cooldown.timer = (cooldown.timer - time.delta_secs()).max(0.0);
     if keyboard.just_pressed(KeyCode::KeyF) && cooldown.timer <= 0.0 {
+        audio_queue.events.push(AudioEvent::Attack);
         if let Ok((pt, facing)) = player_q.single() {
             let pp = pt.translation.truncate();
             for (e, t) in &creatures {
@@ -658,6 +667,7 @@ pub fn survival(
     creatures: Query<&Transform, (With<Creature>, Without<Player>)>,
     shield: Res<Shield>,
     mut score: ResMut<Score>,
+    mut audio_queue: ResMut<AudioQueue>,
 ) {
     let Ok((mut pt, mut hp)) = player_q.single_mut() else {
         return;
@@ -669,6 +679,7 @@ pub fn survival(
         }
     }
     if damaged {
+        audio_queue.events.push(AudioEvent::Hit);
         let dmg = if shield.0 { 5.0 } else { 10.0 };
         hp.0 -= dmg * time.delta_secs();
     } else {
@@ -1029,5 +1040,23 @@ pub fn toggle_credits(keyboard: Res<ButtonInput<KeyCode>>, mut q: Query<&mut Vis
                 _ => Visibility::Hidden,
             };
         }
+    }
+}
+
+pub fn audio_system(audio: Res<AudioStream>, mut queue: ResMut<AudioQueue>) {
+    if let Some(sink) = &audio.sink {
+        for ev in queue.events.drain(..) {
+            let (freq, dur) = match ev {
+                AudioEvent::Break => (300.0, 0.08),
+                AudioEvent::Place => (500.0, 0.08),
+                AudioEvent::Jump => (600.0, 0.1),
+                AudioEvent::Attack => (700.0, 0.1),
+                AudioEvent::Hit => (200.0, 0.15),
+                AudioEvent::Creature => (400.0, 0.1),
+            };
+            play_beep(sink, freq, dur);
+        }
+    } else {
+        queue.events.clear();
     }
 }
