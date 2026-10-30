@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::blocks::{self, BlockType};
-use crate::components::{Creature, Grounded, Health, Hud, InventoryUi, MenuUi, Minimap, MinimapCell, NightOverlay, PauseUi, Player, SplashUi, Star, Velocity};
+use crate::components::{Creature, CreditsUi, Grounded, Health, Hud, InventoryUi, MenuUi, Minimap, MinimapCell, NightOverlay, PauseUi, Player, SplashUi, Star, Velocity};
 use crate::resources::{Inventory, Score};
 use crate::save::SaveData;
 use crate::world::{self, CHUNK_W, Chunk, TILE_SIZE, WORLD_H, World};
@@ -241,6 +241,20 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
             left: Val::Percent(30.0),
             ..default()
         },
+    ));
+
+    commands.spawn((
+        CreditsUi,
+        Text::new("Asterwild\n\nA spiritual successor to Starbound\n\nBuilt with Rust + Bevy\n\nPress C to close"),
+        TextFont { font_size: FontSize::Px(24.0), ..default() },
+        TextColor(Color::WHITE),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Percent(30.0),
+            left: Val::Percent(30.0),
+            ..default()
+        },
+        Visibility::Hidden,
     ));
 
     commands.spawn((

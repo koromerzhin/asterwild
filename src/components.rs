@@ -83,3 +83,7 @@ pub struct MenuUi;
 
 #[derive(Component)]
 pub struct SplashUi;
+
+
+#[derive(Component)]
+pub struct CreditsUi;
