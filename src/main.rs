@@ -16,6 +16,26 @@ enum BlockType {
     Dirt,
     Stone,
     Ore,
+    Sand,
+    Snow,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Biome {
+    Forest,
+    Desert,
+    Snow,
+}
+
+fn biome_at(x: i32, seed: u64) -> Biome {
+    let h = hash2(x / 24, 0, seed.wrapping_mul(13));
+    if h < 0.33 {
+        Biome::Desert
+    } else if h < 0.66 {
+        Biome::Snow
+    } else {
+        Biome::Forest
+    }
 }
 
 impl BlockType {
@@ -24,6 +44,8 @@ impl BlockType {
             BlockType::Dirt => Color::srgb(0.45, 0.30, 0.18),
             BlockType::Stone => Color::srgb(0.50, 0.50, 0.55),
             BlockType::Ore => Color::srgb(0.75, 0.60, 0.20),
+            BlockType::Sand => Color::srgb(0.85, 0.75, 0.45),
+            BlockType::Snow => Color::srgb(0.95, 0.95, 1.0),
         }
     }
 }
@@ -86,7 +108,11 @@ impl World {
                         BlockType::Stone
                     }
                 } else {
-                    BlockType::Dirt
+                    match biome_at(wx, self.seed) {
+                        Biome::Desert => BlockType::Sand,
+                        Biome::Snow => BlockType::Snow,
+                        Biome::Forest => BlockType::Dirt,
+                    }
                 };
                 blocks[Self::block_index(lx, y)] = Some(bt);
             }
@@ -489,6 +515,8 @@ fn mouse_interact(
                     BlockType::Dirt => inventory.dirt += 1,
                     BlockType::Stone => inventory.stone += 1,
                     BlockType::Ore => inventory.ore += 1,
+                    BlockType::Sand => inventory.dirt += 1,
+                    BlockType::Snow => inventory.dirt += 1,
                 }
             }
         }
@@ -497,7 +525,7 @@ fn mouse_interact(
         if world.get(tx, ty).is_none() {
             let bt = selected.0;
             let have = match bt {
-                BlockType::Dirt => &mut inventory.dirt,
+                BlockType::Dirt | BlockType::Sand | BlockType::Snow => &mut inventory.dirt,
                 BlockType::Stone => &mut inventory.stone,
                 BlockType::Ore => &mut inventory.ore,
             };
