@@ -9,6 +9,7 @@ pub enum BlockType {
     Sand,
     Snow,
     Torch,
+    Ladder,
 }
 
 impl BlockType {
@@ -20,6 +21,7 @@ impl BlockType {
             BlockType::Sand => Color::srgb(0.85, 0.75, 0.45),
             BlockType::Snow => Color::srgb(0.95, 0.95, 1.0),
             BlockType::Torch => Color::srgb(0.9, 0.6, 0.2),
+            BlockType::Ladder => Color::srgb(0.6, 0.4, 0.2),
         }
     }
 }
