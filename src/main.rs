@@ -211,6 +211,14 @@ struct Grounded(bool);
 struct Health(f32);
 
 #[derive(Component)]
+struct Facing(f32);
+
+#[derive(Resource, Default)]
+struct AttackCooldown {
+    timer: f32,
+}
+
+#[derive(Component)]
 struct Creature {
     dir: f32,
     timer: f32,
@@ -233,6 +241,7 @@ fn main() {
         .insert_resource(Inventory::default())
         .insert_resource(Score::default())
         .insert_resource(SelectedBlock::default())
+        .insert_resource(AttackCooldown::default())
         .insert_resource(DayNight::default())
         .insert_resource(ClearColor(Color::srgb(0.5, 0.7, 1.0)))
         .add_systems(Startup, setup)
@@ -250,6 +259,7 @@ fn main() {
                 hotbar_input,
                 crafting,
                 survival,
+                attack,
                 update_hud,
             ),
         )
@@ -329,6 +339,7 @@ fn setup(mut commands: Commands, mut world: ResMut<World>) {
         Velocity(Vec2::ZERO),
         Grounded(false),
         Health(100.0),
+        Facing(1.0),
         Sprite {
             color: Color::srgb(0.2, 0.5, 0.9),
             custom_size: Some(Vec2::new(PLAYER_HALF_W * 2.0, PLAYER_HALF_H * 2.0)),
@@ -402,9 +413,9 @@ fn collides(world: &World, px: f32, py: f32) -> bool {
 
 fn player_input(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Velocity, &mut Grounded), With<Player>>,
+    mut query: Query<(&mut Velocity, &mut Grounded, &mut Facing), With<Player>>,
 ) {
-    for (mut vel, _) in &mut query {
+    for (mut vel, _, mut facing) in &mut query {
         let mut vx = 0.0;
         if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::ArrowLeft) {
             vx -= MOVE_SPEED;
@@ -413,6 +424,11 @@ fn player_input(
             vx += MOVE_SPEED;
         }
         vel.0.x = vx;
+        if vx < 0.0 {
+            facing.0 = -1.0;
+        } else if vx > 0.0 {
+            facing.0 = 1.0;
+        }
     }
 }
 
@@ -819,6 +835,33 @@ fn creature_ai(
         }
     }
 }
+
+
+fn attack(
+    time: Res<Time>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut cooldown: ResMut<AttackCooldown>,
+    player_q: Query<(&Transform, &Facing), With<Player>>,
+    mut commands: Commands,
+    mut score: ResMut<Score>,
+    creatures: Query<(Entity, &Transform), With<Creature>>,
+) {
+    cooldown.timer = (cooldown.timer - time.delta_secs()).max(0.0);
+    if keyboard.just_pressed(KeyCode::KeyF) && cooldown.timer <= 0.0 {
+        if let Ok((pt, facing)) = player_q.single() {
+            let pp = pt.translation.truncate();
+            for (e, t) in &creatures {
+                let d = t.translation.truncate() - pp;
+                if d.length() < 48.0 && d.x * facing.0 >= 0.0 {
+                    commands.entity(e).despawn();
+                    score.kills += 1;
+                }
+            }
+        }
+        cooldown.timer = 0.5;
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
