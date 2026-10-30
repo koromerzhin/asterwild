@@ -59,9 +59,27 @@ pub fn physics(
 ) {
     let dt = time.delta_secs();
     for (mut transform, mut vel, mut grounded) in &mut query {
-        // gravity
-        vel.0.y -= GRAVITY * dt;
-        if vel.0.y < -MAX_FALL {
+        // ladder check
+        let on_ladder = {
+            let cx = (transform.translation.x / TILE_SIZE).floor() as i32;
+            let cy = (transform.translation.y / TILE_SIZE).floor() as i32;
+            world.get(cx, cy) == Some(BlockType::Ladder)
+                || world.get(cx, cy + 1) == Some(BlockType::Ladder)
+        };
+        if on_ladder {
+            let mut vy = 0.0;
+            if keyboard.pressed(KeyCode::KeyW) || keyboard.pressed(KeyCode::ArrowUp) {
+                vy += 120.0;
+            }
+            if keyboard.pressed(KeyCode::KeyS) || keyboard.pressed(KeyCode::ArrowDown) {
+                vy -= 120.0;
+            }
+            vel.0.y = vy;
+        } else {
+            // gravity
+            vel.0.y -= GRAVITY * dt;
+        }
+        if !on_ladder && vel.0.y < -MAX_FALL {
             vel.0.y = -MAX_FALL;
         }
         // jump
@@ -162,6 +180,7 @@ pub fn mouse_interact(
                     BlockType::Sand => inventory.dirt += 1,
                     BlockType::Snow => inventory.dirt += 1,
                     BlockType::Torch => inventory.dirt += 1,
+                    BlockType::Ladder => inventory.dirt += 1,
                 }
             }
         }
@@ -170,7 +189,7 @@ pub fn mouse_interact(
         if world.get(tx, ty).is_none() {
             let bt = selected.0;
             let have = match bt {
-                BlockType::Dirt | BlockType::Sand | BlockType::Snow | BlockType::Torch => {
+                BlockType::Dirt | BlockType::Sand | BlockType::Snow | BlockType::Torch | BlockType::Ladder => {
                     &mut inventory.dirt
                 }
                 BlockType::Stone => &mut inventory.stone,
