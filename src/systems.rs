@@ -11,6 +11,7 @@ use crate::world::{
     PLAYER_HALF_H, PLAYER_HALF_W, TILE_SIZE, WORLD_H, World,
 };
 use bevy::prelude::*;
+use bevy::window::{MonitorSelection, WindowMode};
 
 pub fn collides(world: &World, px: f32, py: f32) -> bool {
     let left = px - PLAYER_HALF_W;
@@ -970,5 +971,17 @@ pub fn menu_input(keyboard: Res<ButtonInput<KeyCode>>, mut next_state: ResMut<Ne
     }
     if keyboard.just_pressed(KeyCode::Escape) {
         exit.write(AppExit::Success);
+    }
+}
+
+pub fn toggle_fullscreen(keyboard: Res<ButtonInput<KeyCode>>, mut window_q: Query<&mut Window>) {
+    if keyboard.just_pressed(KeyCode::F11) {
+        for mut w in &mut window_q {
+            w.mode = if w.mode == WindowMode::Windowed {
+                WindowMode::BorderlessFullscreen(MonitorSelection::Current)
+            } else {
+                WindowMode::Windowed
+            };
+        }
     }
 }
