@@ -18,7 +18,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Asterwild - Prototype".into(),
+                title: format!("Asterwild v{}", env!("CARGO_PKG_VERSION")),
                 resolution: (960u32, 540u32).into(),
                 ..default()
             }),
