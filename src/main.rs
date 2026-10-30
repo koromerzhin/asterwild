@@ -1,8 +1,8 @@
 use bevy::prelude::*;
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 const TILE_SIZE: f32 = 32.0;
-const WORLD_W: i32 = 80;
 const WORLD_H: i32 = 32;
 const GRAVITY: f32 = 900.0;
 const MOVE_SPEED: f32 = 180.0;
@@ -28,24 +28,107 @@ impl BlockType {
     }
 }
 
-#[derive(Resource, Serialize, Deserialize)]
-struct WorldGrid {
-    width: i32,
-    height: i32,
+const CHUNK_W: i32 = 16;
+const LOAD_RADIUS: i32 = 3;
+
+#[derive(Clone, Serialize, Deserialize)]
+struct ChunkData {
+    cx: i32,
     blocks: Vec<Option<BlockType>>,
-    #[serde(skip, default)]
+}
+
+#[derive(Resource)]
+struct World {
+    seed: u64,
+    chunks: HashMap<i32, Chunk>,
+}
+
+struct Chunk {
+    blocks: Vec<Option<BlockType>>,
     entities: Vec<Option<Entity>>,
 }
 
-impl WorldGrid {
-    fn idx(&self, x: i32, y: i32) -> Option<usize> {
-        if x < 0 || y < 0 || x >= self.width || y >= self.height {
-            return None;
-        }
-        Some((y as usize) * (self.width as usize) + (x as usize))
+impl World {
+    fn chunk_x(x: i32) -> i32 {
+        x.div_euclid(CHUNK_W)
+    }
+    fn local_x(x: i32) -> i32 {
+        x.rem_euclid(CHUNK_W)
+    }
+    fn block_index(lx: i32, y: i32) -> usize {
+        (y as usize) * (CHUNK_W as usize) + (lx as usize)
     }
     fn get(&self, x: i32, y: i32) -> Option<BlockType> {
-        self.idx(x, y).and_then(|i| self.blocks[i])
+        if y < 0 || y >= WORLD_H {
+            return None;
+        }
+        let cx = Self::chunk_x(x);
+        let chunk = self.chunks.get(&cx)?;
+        let lx = Self::local_x(x);
+        chunk.blocks[Self::block_index(lx, y)]
+    }
+    fn ensure_chunk(&mut self, commands: &mut Commands, cx: i32) {
+        if self.chunks.contains_key(&cx) {
+            return;
+        }
+        let mut blocks = vec![None; (CHUNK_W * WORLD_H) as usize];
+        for lx in 0..CHUNK_W {
+            let wx = cx * CHUNK_W + lx;
+            let surface = surface_height(wx, self.seed);
+            for y in 0..surface {
+                if is_cave(wx, y, self.seed) {
+                    continue;
+                }
+                let bt = if y < surface - 4 {
+                    if is_ore(wx, y, self.seed) {
+                        BlockType::Ore
+                    } else {
+                        BlockType::Stone
+                    }
+                } else {
+                    BlockType::Dirt
+                };
+                blocks[Self::block_index(lx, y)] = Some(bt);
+            }
+        }
+        // spawn entities
+        let mut entities = vec![None; (CHUNK_W * WORLD_H) as usize];
+        for y in 0..WORLD_H {
+            for lx in 0..CHUNK_W {
+                let wx = cx * CHUNK_W + lx;
+                if let Some(bt) = blocks[Self::block_index(lx, y)] {
+                    let e = commands
+                        .spawn((
+                            Sprite {
+                                color: bt.color(),
+                                custom_size: Some(Vec2::splat(TILE_SIZE)),
+                                ..default()
+                            },
+                            Transform::from_xyz(
+                                wx as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                                y as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                                0.0,
+                            ),
+                        ))
+                        .id();
+                    entities[Self::block_index(lx, y)] = Some(e);
+                }
+            }
+        }
+        self.chunks.insert(
+            cx,
+            Chunk {
+                blocks,
+                entities,
+            },
+        );
+    }
+    fn unload_chunk(&mut self, commands: &mut Commands, cx: i32) {
+        if let Some(chunk) = self.chunks.remove(&cx) {
+            for e in chunk.entities.iter().flatten() {
+                commands.entity(*e).despawn();
+            }
+        }
     }
 }
 
@@ -63,9 +146,8 @@ struct Score {
 
 #[derive(Serialize, Deserialize)]
 struct SaveData {
-    width: i32,
-    height: i32,
-    blocks: Vec<Option<BlockType>>,
+    seed: u64,
+    chunks: Vec<ChunkData>,
     inventory: Inventory,
     score: Score,
     player_x: f32,
@@ -118,6 +200,7 @@ fn main() {
             }),
             ..default()
         }))
+        .insert_resource(World { seed: 12345, chunks: HashMap::new() })
         .insert_resource(Inventory::default())
         .insert_resource(Score::default())
         .insert_resource(SelectedBlock::default())
@@ -128,6 +211,7 @@ fn main() {
             Update,
             (
                 player_input,
+                chunk_manager,
                 physics,
                 camera_follow,
                 mouse_interact,
@@ -141,85 +225,70 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, mut world: ResMut<World>) {
     commands.spawn(Camera2d);
 
-    let seed = 12345u64;
-
-    // Generate terrain data from seed
-    let mut blocks = vec![None; (WORLD_W * WORLD_H) as usize];
-    for x in 0..WORLD_W {
-        let surface = surface_height(x, seed);
-        for y in 0..surface {
-            if is_cave(x, y, seed) {
-                continue;
-            }
-            let bt = if y < surface - 4 {
-                if is_ore(x, y, seed) {
-                    BlockType::Ore
-                } else {
-                    BlockType::Stone
-                }
-            } else {
-                BlockType::Dirt
-            };
-            let idx = (y as usize) * (WORLD_W as usize) + (x as usize);
-            blocks[idx] = Some(bt);
-        }
-    }
-
-    let mut grid = WorldGrid {
-        width: WORLD_W,
-        height: WORLD_H,
-        blocks,
-        entities: vec![None; (WORLD_W * WORLD_H) as usize],
-    };
-
-    // Defaults
     let mut inventory = Inventory::default();
     let mut score = Score::default();
     let mut player_x = 40.0 * TILE_SIZE;
     let mut player_y = 20.0 * TILE_SIZE;
 
-    // Attempt to load saved game
+    // Attempt load save
+    let mut loaded_chunks: Option<Vec<ChunkData>> = None;
     if let Ok(data) = std::fs::read_to_string("asterwild_save.json") {
-        if let Ok(loaded) = serde_json::from_str::<SaveData>(&data) {
-            if loaded.width == WORLD_W && loaded.height == WORLD_H {
-                grid.blocks = loaded.blocks;
-                inventory = loaded.inventory;
-                score = loaded.score;
-                player_x = loaded.player_x;
-                player_y = loaded.player_y;
+        if let Ok(save) = serde_json::from_str::<SaveData>(&data) {
+            if save.seed == world.seed {
+                loaded_chunks = Some(save.chunks);
+                inventory = save.inventory;
+                score = save.score;
+                player_x = save.player_x;
+                player_y = save.player_y;
             }
         }
     }
 
-    // Spawn block sprites
-    for y in 0..WORLD_H {
-        for x in 0..WORLD_W {
-            if let Some(bt) = grid.get(x, y) {
-                let e = commands
-                    .spawn((
-                        Sprite {
-                            color: bt.color(),
-                            custom_size: Some(Vec2::splat(TILE_SIZE)),
-                            ..default()
-                        },
-                        Transform::from_xyz(
-                            x as f32 * TILE_SIZE + TILE_SIZE / 2.0,
-                            y as f32 * TILE_SIZE + TILE_SIZE / 2.0,
-                            0.0,
-                        ),
-                    ))
-                    .id();
-                if let Some(i) = grid.idx(x, y) {
-                    grid.entities[i] = Some(e);
+    if let Some(chunks) = loaded_chunks {
+        for cd in chunks {
+            // build chunk
+            let mut entities = vec![None; (CHUNK_W * WORLD_H) as usize];
+            for y in 0..WORLD_H {
+                for lx in 0..CHUNK_W {
+                    let wx = cd.cx * CHUNK_W + lx;
+                    if let Some(bt) = cd.blocks[World::block_index(lx, y)] {
+                        let e = commands
+                            .spawn((
+                                Sprite {
+                                    color: bt.color(),
+                                    custom_size: Some(Vec2::splat(TILE_SIZE)),
+                                    ..default()
+                                },
+                                Transform::from_xyz(
+                                    wx as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                                    y as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                                    0.0,
+                                ),
+                            ))
+                            .id();
+                        entities[World::block_index(lx, y)] = Some(e);
+                    }
                 }
             }
+            world.chunks.insert(
+                cd.cx,
+                Chunk {
+                    blocks: cd.blocks,
+                    entities,
+                },
+            );
         }
     }
 
-    commands.insert_resource(grid);
+    // Ensure initial chunks around spawn
+    let spawn_cx = World::chunk_x((player_x / TILE_SIZE) as i32);
+    for dc in -LOAD_RADIUS..=LOAD_RADIUS {
+        world.ensure_chunk(&mut commands, spawn_cx + dc);
+    }
+
     commands.insert_resource(inventory);
     commands.insert_resource(score);
 
@@ -278,7 +347,7 @@ fn setup(mut commands: Commands) {
     ));
 }
 
-fn collides(grid: &WorldGrid, px: f32, py: f32) -> bool {
+fn collides(world: &World, px: f32, py: f32) -> bool {
     let left = px - PLAYER_HALF_W;
     let right = px + PLAYER_HALF_W;
     let bottom = py - PLAYER_HALF_H;
@@ -291,7 +360,7 @@ fn collides(grid: &WorldGrid, px: f32, py: f32) -> bool {
 
     for ty in min_y..=max_y {
         for tx in min_x..=max_x {
-            if grid.get(tx, ty).is_some() {
+            if world.get(tx, ty).is_some() {
                 return true;
             }
         }
@@ -318,7 +387,7 @@ fn player_input(
 fn physics(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    grid: Res<WorldGrid>,
+    world: Res<World>,
     mut query: Query<(&mut Transform, &mut Velocity, &mut Grounded), With<Player>>,
 ) {
     let dt = time.delta_secs();
@@ -340,14 +409,14 @@ fn physics(
 
         // horizontal
         let new_x = transform.translation.x + vel.0.x * dt;
-        if !collides(&grid, new_x, transform.translation.y) {
+        if !collides(&world, new_x, transform.translation.y) {
             transform.translation.x = new_x;
         } else {
             vel.0.x = 0.0;
         }
         // vertical
         let new_y = transform.translation.y + vel.0.y * dt;
-        if !collides(&grid, transform.translation.x, new_y) {
+        if !collides(&world, transform.translation.x, new_y) {
             transform.translation.y = new_y;
             grounded.0 = false;
         } else {
@@ -376,7 +445,7 @@ fn mouse_interact(
     window: Single<&Window>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
     mut commands: Commands,
-    mut grid: ResMut<WorldGrid>,
+    mut world: ResMut<World>,
     mut inventory: ResMut<Inventory>,
     mut score: ResMut<Score>,
     selected: Res<SelectedBlock>,
@@ -406,21 +475,26 @@ fn mouse_interact(
             }
         }
         // break
-        if let Some(bt) = grid.get(tx, ty) {
-            let idx = grid.idx(tx, ty).unwrap();
-            if let Some(e) = grid.entities[idx].take() {
-                commands.entity(e).despawn();
-            }
-            grid.blocks[idx] = None;
-            match bt {
-                BlockType::Dirt => inventory.dirt += 1,
-                BlockType::Stone => inventory.stone += 1,
-                BlockType::Ore => inventory.ore += 1,
+        let cx = World::chunk_x(tx);
+        world.ensure_chunk(&mut commands, cx);
+        if let Some(chunk) = world.chunks.get_mut(&cx) {
+            let lx = World::local_x(tx);
+            let idx = World::block_index(lx, ty);
+            if let Some(bt) = chunk.blocks[idx] {
+                if let Some(e) = chunk.entities[idx].take() {
+                    commands.entity(e).despawn();
+                }
+                chunk.blocks[idx] = None;
+                match bt {
+                    BlockType::Dirt => inventory.dirt += 1,
+                    BlockType::Stone => inventory.stone += 1,
+                    BlockType::Ore => inventory.ore += 1,
+                }
             }
         }
     } else if mouse_buttons.just_pressed(MouseButton::Right) {
-        // place dirt if empty
-        if grid.get(tx, ty).is_none() {
+        // place selected if empty
+        if world.get(tx, ty).is_none() {
             let bt = selected.0;
             let have = match bt {
                 BlockType::Dirt => &mut inventory.dirt,
@@ -429,6 +503,8 @@ fn mouse_interact(
             };
             if *have > 0 {
                 *have -= 1;
+                let cx = World::chunk_x(tx);
+                world.ensure_chunk(&mut commands, cx);
                 let e = commands
                     .spawn((
                         Sprite {
@@ -443,9 +519,12 @@ fn mouse_interact(
                         ),
                     ))
                     .id();
-                let idx = grid.idx(tx, ty).unwrap();
-                grid.blocks[idx] = Some(bt);
-                grid.entities[idx] = Some(e);
+                if let Some(chunk) = world.chunks.get_mut(&cx) {
+                    let lx = World::local_x(tx);
+                    let idx = World::block_index(lx, ty);
+                    chunk.blocks[idx] = Some(bt);
+                    chunk.entities[idx] = Some(e);
+                }
             }
         }
     }
@@ -460,17 +539,25 @@ fn update_hud(inventory: Res<Inventory>, score: Res<Score>, selected: Res<Select
 fn save_load(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
-    mut grid: ResMut<WorldGrid>,
+    mut world: ResMut<World>,
     mut inventory: ResMut<Inventory>,
     mut score: ResMut<Score>,
     mut player_q: Query<&mut Transform, With<Player>>,
 ) {
     if keyboard.just_pressed(KeyCode::KeyS) {
+        // chunk loader: ensure chunks around player
         let player_pos = player_q.single().map(|t| (t.translation.x, t.translation.y)).unwrap_or((40.0 * TILE_SIZE, 20.0 * TILE_SIZE));
+        let chunks: Vec<ChunkData> = world
+            .chunks
+            .iter()
+            .map(|(cx, c)| ChunkData {
+                cx: *cx,
+                blocks: c.blocks.clone(),
+            })
+            .collect();
         let save = SaveData {
-            width: grid.width,
-            height: grid.height,
-            blocks: grid.blocks.clone(),
+            seed: world.seed,
+            chunks,
             inventory: inventory.clone(),
             score: score.clone(),
             player_x: player_pos.0,
@@ -483,40 +570,49 @@ fn save_load(
     if keyboard.just_pressed(KeyCode::KeyL) {
         if let Ok(data) = std::fs::read_to_string("asterwild_save.json") {
             if let Ok(loaded) = serde_json::from_str::<SaveData>(&data) {
-                if loaded.width == grid.width && loaded.height == grid.height {
-                    // despawn existing blocks
-                    for e in grid.entities.iter().flatten() {
-                        commands.entity(*e).despawn();
+                if loaded.seed == world.seed {
+                    // despawn all
+                    for chunk in world.chunks.values() {
+                        for e in chunk.entities.iter().flatten() {
+                            commands.entity(*e).despawn();
+                        }
                     }
-                    grid.blocks = loaded.blocks;
-                    grid.entities = vec![None; (grid.width * grid.height) as usize];
-                    *inventory = loaded.inventory;
-                    *score = loaded.score;
-                    // respawn blocks
-                    for y in 0..grid.height {
-                        for x in 0..grid.width {
-                            if let Some(bt) = grid.get(x, y) {
-                                let e = commands
-                                    .spawn((
-                                        Sprite {
-                                            color: bt.color(),
-                                            custom_size: Some(Vec2::splat(TILE_SIZE)),
-                                            ..default()
-                                        },
-                                        Transform::from_xyz(
-                                            x as f32 * TILE_SIZE + TILE_SIZE / 2.0,
-                                            y as f32 * TILE_SIZE + TILE_SIZE / 2.0,
-                                            0.0,
-                                        ),
-                                    ))
-                                    .id();
-                                if let Some(i) = grid.idx(x, y) {
-                                    grid.entities[i] = Some(e);
+                    world.chunks.clear();
+                    // load chunks
+                    for cd in loaded.chunks {
+                        let mut entities = vec![None; (CHUNK_W * WORLD_H) as usize];
+                        for y in 0..WORLD_H {
+                            for lx in 0..CHUNK_W {
+                                let wx = cd.cx * CHUNK_W + lx;
+                                if let Some(bt) = cd.blocks[World::block_index(lx, y)] {
+                                    let e = commands
+                                        .spawn((
+                                            Sprite {
+                                                color: bt.color(),
+                                                custom_size: Some(Vec2::splat(TILE_SIZE)),
+                                                ..default()
+                                            },
+                                            Transform::from_xyz(
+                                                wx as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                                                y as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                                                0.0,
+                                            ),
+                                        ))
+                                        .id();
+                                    entities[World::block_index(lx, y)] = Some(e);
                                 }
                             }
                         }
+                        world.chunks.insert(
+                            cd.cx,
+                            Chunk {
+                                blocks: cd.blocks,
+                                entities,
+                            },
+                        );
                     }
-                    // move player
+                    *inventory = loaded.inventory;
+                    *score = loaded.score;
                     if let Ok(mut t) = player_q.single_mut() {
                         t.translation.x = loaded.player_x;
                         t.translation.y = loaded.player_y;
@@ -583,7 +679,31 @@ fn day_night(
     clear_color.0 = Color::srgb(r, g, b);
 }
 
-fn creature_collides(grid: &WorldGrid, px: f32, py: f32) -> bool {
+
+fn chunk_manager(
+    mut commands: Commands,
+    mut world: ResMut<World>,
+    player_q: Query<&Transform, With<Player>>,
+) {
+    let Ok(p) = player_q.single() else { return; };
+    let pcx = World::chunk_x((p.translation.x / TILE_SIZE) as i32);
+    // ensure
+    for dc in -LOAD_RADIUS..=LOAD_RADIUS {
+        world.ensure_chunk(&mut commands, pcx + dc);
+    }
+    // unload far
+    let far: Vec<i32> = world
+        .chunks
+        .keys()
+        .copied()
+        .filter(|cx| (*cx - pcx).abs() > LOAD_RADIUS + 1)
+        .collect();
+    for cx in far {
+        world.unload_chunk(&mut commands, cx);
+    }
+}
+
+fn creature_collides(world: &World, px: f32, py: f32) -> bool {
     let hw = 10.0f32;
     let hh = 8.0f32;
     let left = px - hw;
@@ -596,7 +716,7 @@ fn creature_collides(grid: &WorldGrid, px: f32, py: f32) -> bool {
     let max_y = ((top - 0.001) / TILE_SIZE).floor() as i32;
     for ty in min_y..=max_y {
         for tx in min_x..=max_x {
-            if grid.get(tx, ty).is_some() {
+            if world.get(tx, ty).is_some() {
                 return true;
             }
         }
@@ -606,7 +726,7 @@ fn creature_collides(grid: &WorldGrid, px: f32, py: f32) -> bool {
 
 fn creature_ai(
     time: Res<Time>,
-    grid: Res<WorldGrid>,
+    world: Res<World>,
     mut query: Query<(&mut Creature, &mut Velocity, &mut Grounded, &mut Transform)>,
 ) {
     let dt = time.delta_secs();
@@ -630,7 +750,7 @@ fn creature_ai(
             let below_y = transform.translation.y - TILE_SIZE * 0.6;
             let tx = (ahead_x / TILE_SIZE).floor() as i32;
             let ty = (below_y / TILE_SIZE).floor() as i32;
-            if grid.get(tx, ty).is_none() {
+            if world.get(tx, ty).is_none() {
                 creature.dir = -creature.dir;
             }
         }
@@ -645,7 +765,7 @@ fn creature_ai(
 
         // horizontal
         let new_x = transform.translation.x + vel.0.x * dt;
-        if !creature_collides(&grid, new_x, transform.translation.y) {
+        if !creature_collides(&world, new_x, transform.translation.y) {
             transform.translation.x = new_x;
         } else {
             creature.dir = -creature.dir;
@@ -653,7 +773,7 @@ fn creature_ai(
         }
         // vertical
         let new_y = transform.translation.y + vel.0.y * dt;
-        if !creature_collides(&grid, transform.translation.x, new_y) {
+        if !creature_collides(&world, transform.translation.x, new_y) {
             transform.translation.y = new_y;
             grounded.0 = false;
         } else {
@@ -700,17 +820,12 @@ mod tests {
     }
 
     #[test]
-    fn grid_index_bounds() {
-        let grid = WorldGrid {
-            width: 4,
-            height: 4,
-            blocks: vec![None; 16],
-            entities: vec![None; 16],
-        };
-        assert!(grid.idx(0, 0).is_some());
-        assert!(grid.idx(3, 3).is_some());
-        assert!(grid.idx(-1, 0).is_none());
-        assert!(grid.idx(4, 0).is_none());
+    fn chunk_indexing() {
+        assert_eq!(World::chunk_x(0), 0);
+        assert_eq!(World::chunk_x(15), 0);
+        assert_eq!(World::chunk_x(16), 1);
+        assert_eq!(World::chunk_x(-1), -1);
+        assert_eq!(World::local_x(-1), 15);
     }
 }
 
