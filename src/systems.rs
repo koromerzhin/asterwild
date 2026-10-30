@@ -782,3 +782,38 @@ pub fn toggle_shield(keyboard: Res<ButtonInput<KeyCode>>, mut inventory: ResMut<
         shield.0 = true;
     }
 }
+
+pub fn weather(
+    time: Res<Time>,
+    mut timer: ResMut<WeatherTimer>,
+    daynight: Res<DayNight>,
+    camera_q: Query<&Transform, (With<Camera2d>, Without<Particle>)>,
+    mut commands: Commands,
+) {
+    // rain at night
+    let is_night = daynight.time < 0.25 || daynight.time > 0.75;
+    if !is_night {
+        return;
+    }
+    timer.timer -= time.delta_secs();
+    if timer.timer > 0.0 {
+        return;
+    }
+    timer.timer = 0.05;
+    let Ok(ct) = camera_q.single() else { return; };
+    let cam = ct.translation.truncate();
+    for i in 0..3 {
+        let x = cam.x + (i as f32 - 1.0) * 100.0 + (time.elapsed_secs() * 37.0).sin() * 50.0;
+        let y = cam.y + 200.0;
+        commands.spawn((
+            Particle { lifetime: 1.5, max_lifetime: 1.5 },
+            Sprite {
+                color: Color::srgba(0.7, 0.8, 1.0, 0.5),
+                custom_size: Some(Vec2::new(1.0, 6.0)),
+                ..default()
+            },
+            Velocity(Vec2::new(-20.0, -200.0)),
+            Transform::from_xyz(x, y, 15.0),
+        ));
+    }
+}
