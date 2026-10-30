@@ -11,6 +11,7 @@ authors = ["koromerzhin"]
 bevy = "0.20"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+rodio = "0.22"
 
 [profile.dev]
 opt-level = 1

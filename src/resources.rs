@@ -68,3 +68,8 @@ pub struct Jetpack(pub bool);
 
 #[derive(Resource, Default)]
 pub struct Paused(pub bool);
+
+#[derive(Resource, Default)]
+pub struct AudioStream {
+    pub sink: Option<rodio::MixerDeviceSink>,
+}
