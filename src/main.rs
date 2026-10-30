@@ -15,6 +15,7 @@ const PLAYER_HALF_H: f32 = 14.0;
 enum BlockType {
     Dirt,
     Stone,
+    Ore,
 }
 
 impl BlockType {
@@ -22,6 +23,7 @@ impl BlockType {
         match self {
             BlockType::Dirt => Color::srgb(0.45, 0.30, 0.18),
             BlockType::Stone => Color::srgb(0.50, 0.50, 0.55),
+            BlockType::Ore => Color::srgb(0.75, 0.60, 0.20),
         }
     }
 }
@@ -51,6 +53,17 @@ impl WorldGrid {
 struct Inventory {
     dirt: u32,
     stone: u32,
+    ore: u32,
+}
+
+#[derive(Resource)]
+struct DayNight {
+    time: f32,
+}
+impl Default for DayNight {
+    fn default() -> Self {
+        Self { time: 0.25 }
+    }
 }
 
 #[derive(Component)]
@@ -76,6 +89,8 @@ fn main() {
             ..default()
         }))
         .insert_resource(Inventory::default())
+        .insert_resource(DayNight::default())
+        .insert_resource(ClearColor(Color::srgb(0.5, 0.7, 1.0)))
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -85,6 +100,7 @@ fn main() {
                 camera_follow,
                 mouse_interact,
                 save_load,
+                day_night,
                 update_hud,
             ),
         )
@@ -94,14 +110,22 @@ fn main() {
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
 
-    // Generate terrain data
+    let seed = 12345u64;
+
+    // Generate terrain data from seed
     let mut blocks = vec![None; (WORLD_W * WORLD_H) as usize];
     for x in 0..WORLD_W {
-        let h = 8 + ((x as f32 * 0.15).sin() * 3.0) as i32 + (x as i32 % 5);
-        let surface = h.clamp(4, WORLD_H - 4);
+        let surface = surface_height(x, seed);
         for y in 0..surface {
-            let bt = if y < surface - 3 {
-                BlockType::Stone
+            if is_cave(x, y, seed) {
+                continue;
+            }
+            let bt = if y < surface - 4 {
+                if is_ore(x, y, seed) {
+                    BlockType::Ore
+                } else {
+                    BlockType::Stone
+                }
             } else {
                 BlockType::Dirt
             };
@@ -309,6 +333,7 @@ fn mouse_interact(
             match bt {
                 BlockType::Dirt => inventory.dirt += 1,
                 BlockType::Stone => inventory.stone += 1,
+                BlockType::Ore => inventory.ore += 1,
             }
         }
     } else if mouse_buttons.just_pressed(MouseButton::Right) {
@@ -341,7 +366,7 @@ fn mouse_interact(
 
 fn update_hud(inventory: Res<Inventory>, mut q: Query<&mut Text, With<Hud>>) {
     for mut t in &mut q {
-        t.0 = format!("Dirt: {}  Stone: {}", inventory.dirt, inventory.stone);
+        t.0 = format!("Dirt: {}  Stone: {}  Ore: {}", inventory.dirt, inventory.stone, inventory.ore);
     }
 }
 
@@ -393,4 +418,60 @@ fn save_load(
             }
         }
     }
+}
+
+fn hash2(x: i32, y: i32, seed: u64) -> f32 {
+    let mut n = seed
+        .wrapping_add(x as u64 * 374761393)
+        .wrapping_add(y as u64 * 668265263);
+    n = (n ^ (n >> 13)).wrapping_mul(1274126177);
+    (n as f32) / (u64::MAX as f32)
+}
+
+fn surface_height(x: i32, seed: u64) -> i32 {
+    let mut h = 12.0f32;
+    h += (x as f32 * 0.07).sin() * 5.0;
+    h += (x as f32 * 0.19).cos() * 2.5;
+    h += (hash2(x, 0, seed) - 0.5) * 4.0;
+    h.clamp(6.0, (WORLD_H - 4) as f32) as i32
+}
+
+fn is_cave(x: i32, y: i32, seed: u64) -> bool {
+    if y > 2 && hash2(x, y, seed.wrapping_mul(3)) > 0.72 {
+        // carve some caves below surface
+        let n = hash2(x / 3, y / 3, seed.wrapping_mul(7));
+        n > 0.6
+    } else {
+        false
+    }
+}
+
+fn is_ore(x: i32, y: i32, seed: u64) -> bool {
+    hash2(x, y, seed.wrapping_mul(11)) > 0.93
+}
+
+fn day_night(
+    time: Res<Time>,
+    mut daynight: ResMut<DayNight>,
+    mut clear_color: ResMut<ClearColor>,
+) {
+    let dt = time.delta_secs();
+    daynight.time = (daynight.time + dt / 120.0) % 1.0;
+    // 0.0 midnight, 0.25 dawn, 0.5 noon, 0.75 dusk
+    let t = daynight.time;
+    let (r, g, b) = if t < 0.25 {
+        // night -> dawn
+        let k = t / 0.25;
+        (0.05 + 0.45 * k, 0.08 + 0.55 * k, 0.15 + 0.6 * k)
+    } else if t < 0.5 {
+        let k = (t - 0.25) / 0.25;
+        (0.5 + 0.1 * k, 0.63 + 0.15 * k, 0.75 + 0.15 * k)
+    } else if t < 0.75 {
+        let k = (t - 0.5) / 0.25;
+        (0.6 - 0.1 * k, 0.78 - 0.15 * k, 0.9 - 0.15 * k)
+    } else {
+        let k = (t - 0.75) / 0.25;
+        (0.5 - 0.45 * k, 0.63 - 0.55 * k, 0.75 - 0.6 * k)
+    };
+    clear_color.0 = Color::srgb(r, g, b);
 }
