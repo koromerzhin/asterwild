@@ -76,6 +76,12 @@ struct Velocity(Vec2);
 struct Grounded(bool);
 
 #[derive(Component)]
+struct Creature {
+    dir: f32,
+    timer: f32,
+}
+
+#[derive(Component)]
 struct Hud;
 
 fn main() {
@@ -101,6 +107,7 @@ fn main() {
                 mouse_interact,
                 save_load,
                 day_night,
+                creature_ai,
                 update_hud,
             ),
         )
@@ -189,6 +196,30 @@ fn setup(mut commands: Commands) {
         },
         Transform::from_xyz(40.0 * TILE_SIZE, 20.0 * TILE_SIZE, 1.0),
     ));
+
+    // Creatures
+    for i in 0..8 {
+        let cx = 12 + i * 9;
+        let sy = surface_height(cx, 12345);
+        commands.spawn((
+            Creature {
+                dir: if i % 2 == 0 { 1.0 } else { -1.0 },
+                timer: 0.0,
+            },
+            Velocity(Vec2::ZERO),
+            Grounded(false),
+            Sprite {
+                color: Color::srgb(0.2, 0.7, 0.3),
+                custom_size: Some(Vec2::new(20.0, 16.0)),
+                ..default()
+            },
+            Transform::from_xyz(
+                cx as f32 * TILE_SIZE,
+                (sy as f32 + 1.0) * TILE_SIZE,
+                1.0,
+            ),
+        ));
+    }
 
     // HUD
     commands.spawn((
@@ -474,4 +505,86 @@ fn day_night(
         (0.5 - 0.45 * k, 0.63 - 0.55 * k, 0.75 - 0.6 * k)
     };
     clear_color.0 = Color::srgb(r, g, b);
+}
+
+fn creature_collides(grid: &WorldGrid, px: f32, py: f32) -> bool {
+    let hw = 10.0f32;
+    let hh = 8.0f32;
+    let left = px - hw;
+    let right = px + hw;
+    let bottom = py - hh;
+    let top = py + hh;
+    let min_x = (left / TILE_SIZE).floor() as i32;
+    let max_x = ((right - 0.001) / TILE_SIZE).floor() as i32;
+    let min_y = (bottom / TILE_SIZE).floor() as i32;
+    let max_y = ((top - 0.001) / TILE_SIZE).floor() as i32;
+    for ty in min_y..=max_y {
+        for tx in min_x..=max_x {
+            if grid.get(tx, ty).is_some() {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn creature_ai(
+    time: Res<Time>,
+    grid: Res<WorldGrid>,
+    mut query: Query<(&mut Creature, &mut Velocity, &mut Grounded, &mut Transform)>,
+) {
+    let dt = time.delta_secs();
+    for (mut creature, mut vel, mut grounded, mut transform) in &mut query {
+        creature.timer -= dt;
+        if creature.timer <= 0.0 {
+            let r = hash2(transform.translation.x as i32, transform.translation.y as i32, 999);
+            creature.dir = if r < 0.33 {
+                -1.0
+            } else if r > 0.66 {
+                1.0
+            } else {
+                0.0
+            };
+            creature.timer = 1.0 + r * 2.0;
+        }
+
+        // cliff avoidance
+        if creature.dir != 0.0 {
+            let ahead_x = transform.translation.x + creature.dir * TILE_SIZE * 0.6;
+            let below_y = transform.translation.y - TILE_SIZE * 0.6;
+            let tx = (ahead_x / TILE_SIZE).floor() as i32;
+            let ty = (below_y / TILE_SIZE).floor() as i32;
+            if grid.get(tx, ty).is_none() {
+                creature.dir = -creature.dir;
+            }
+        }
+
+        vel.0.x = creature.dir * 50.0;
+
+        // gravity
+        vel.0.y -= GRAVITY * dt;
+        if vel.0.y < -MAX_FALL {
+            vel.0.y = -MAX_FALL;
+        }
+
+        // horizontal
+        let new_x = transform.translation.x + vel.0.x * dt;
+        if !creature_collides(&grid, new_x, transform.translation.y) {
+            transform.translation.x = new_x;
+        } else {
+            creature.dir = -creature.dir;
+            vel.0.x = 0.0;
+        }
+        // vertical
+        let new_y = transform.translation.y + vel.0.y * dt;
+        if !creature_collides(&grid, transform.translation.x, new_y) {
+            transform.translation.y = new_y;
+            grounded.0 = false;
+        } else {
+            if vel.0.y < 0.0 {
+                grounded.0 = true;
+            }
+            vel.0.y = 0.0;
+        }
+    }
 }
