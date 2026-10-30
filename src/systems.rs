@@ -199,6 +199,7 @@ pub fn mouse_interact(
                 }
                 chunk.blocks[idx] = None;
                 match bt {
+                    BlockType::Grass => inventory.dirt += 1,
                     BlockType::Dirt => inventory.dirt += 1,
                     BlockType::Stone => inventory.stone += 1,
                     BlockType::Ore => inventory.ore += 1,
@@ -234,7 +235,7 @@ pub fn mouse_interact(
         if world.get(tx, ty).is_none() {
             let bt = selected.0;
             let have = match bt {
-                BlockType::Dirt | BlockType::Sand | BlockType::Snow | BlockType::Torch | BlockType::Ladder | BlockType::Water | BlockType::Door | BlockType::DoorOpen | BlockType::Furnace => {
+                BlockType::Grass | BlockType::Dirt | BlockType::Sand | BlockType::Snow | BlockType::Torch | BlockType::Ladder | BlockType::Water | BlockType::Door | BlockType::DoorOpen | BlockType::Furnace => {
                     &mut inventory.dirt
                 }
                 BlockType::Stone => &mut inventory.stone,

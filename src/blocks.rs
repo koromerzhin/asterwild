@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Debug)]
 pub enum BlockType {
+    Grass,
     Dirt,
     Stone,
     Ore,
@@ -19,6 +20,7 @@ pub enum BlockType {
 impl BlockType {
     pub fn color(self) -> Color {
         match self {
+            BlockType::Grass => Color::srgb(0.30, 0.65, 0.25),
             BlockType::Dirt => Color::srgb(0.45, 0.30, 0.18),
             BlockType::Stone => Color::srgb(0.50, 0.50, 0.55),
             BlockType::Ore => Color::srgb(0.75, 0.60, 0.20),

@@ -84,7 +84,13 @@ impl World {
                     match blocks::biome_at(wx, seed) {
                         blocks::Biome::Desert => BlockType::Sand,
                         blocks::Biome::Snow => BlockType::Snow,
-                        blocks::Biome::Forest => BlockType::Dirt,
+                        blocks::Biome::Forest => {
+                            if y == surface - 1 {
+                                BlockType::Grass
+                            } else {
+                                BlockType::Dirt
+                            }
+                        }
                     }
                 };
                 blocks[Self::block_index(lx, y)] = Some(bt);
