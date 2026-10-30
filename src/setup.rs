@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::blocks::{self, BlockType};
-use crate::components::{Creature, Grounded, Health, Hud, InventoryUi, NightOverlay, Player, Star, Velocity};
+use crate::components::{Creature, Grounded, Health, Hud, InventoryUi, NightOverlay, PauseUi, Player, Star, Velocity};
 use crate::resources::{Inventory, Score};
 use crate::save::SaveData;
 use crate::world::{self, CHUNK_W, Chunk, TILE_SIZE, WORLD_H, World};
@@ -168,6 +168,20 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
             ..default()
         },
         BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
+        Visibility::Hidden,
+    ));
+
+    commands.spawn((
+        PauseUi,
+        Text::new("PAUSED"),
+        TextFont { font_size: FontSize::Px(48.0), ..default() },
+        TextColor(Color::srgba(1.0, 1.0, 1.0, 0.9)),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Percent(40.0),
+            left: Val::Percent(42.0),
+            ..default()
+        },
         Visibility::Hidden,
     ));
 
