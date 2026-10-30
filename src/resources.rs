@@ -95,3 +95,6 @@ impl Default for SplashTimer {
         Self { timer: 2.0 }
     }
 }
+
+#[derive(Resource, Default)]
+pub struct SaveSlot(pub u8);

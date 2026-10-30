@@ -40,6 +40,7 @@ fn main() {
         .insert_resource(WeatherTimer::default())
         .insert_resource(DayNight::default())
         .insert_resource(AutoSaveTimer::default())
+        .insert_resource(SaveSlot::default())
         .insert_resource(SplashTimer::default())
         .init_state::<GameState>()
         .insert_resource(AudioStream::default())
