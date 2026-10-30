@@ -1,5 +1,6 @@
 use crate::blocks::{self, BlockType};
 use crate::components::*;
+use crate::components::CreditsUi;
 use crate::components::SplashUi;
 use crate::components::MenuUi;
 use crate::components::GameState;
@@ -1017,5 +1018,16 @@ pub fn splash_update(time: Res<Time>, mut timer: ResMut<SplashTimer>, mut next_s
 pub fn cycle_slot(keyboard: Res<ButtonInput<KeyCode>>, mut slot: ResMut<SaveSlot>) {
     if keyboard.just_pressed(KeyCode::F2) {
         slot.0 = (slot.0 + 1) % 3;
+    }
+}
+
+pub fn toggle_credits(keyboard: Res<ButtonInput<KeyCode>>, mut q: Query<&mut Visibility, With<CreditsUi>>) {
+    if keyboard.just_pressed(KeyCode::KeyC) {
+        for mut v in &mut q {
+            *v = match *v {
+                Visibility::Hidden => Visibility::Visible,
+                _ => Visibility::Hidden,
+            };
+        }
     }
 }
