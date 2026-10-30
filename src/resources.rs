@@ -113,3 +113,6 @@ pub enum AudioEvent {
 pub struct AudioQueue {
     pub events: Vec<AudioEvent>,
 }
+
+#[derive(Resource, Default)]
+pub struct Muted(pub bool);

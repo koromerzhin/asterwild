@@ -1043,7 +1043,11 @@ pub fn toggle_credits(keyboard: Res<ButtonInput<KeyCode>>, mut q: Query<&mut Vis
     }
 }
 
-pub fn audio_system(audio: Res<AudioStream>, mut queue: ResMut<AudioQueue>) {
+pub fn audio_system(audio: Res<AudioStream>, muted: Res<Muted>, mut queue: ResMut<AudioQueue>) {
+    if muted.0 {
+        queue.events.clear();
+        return;
+    }
     if let Some(sink) = &audio.sink {
         for ev in queue.events.drain(..) {
             let (freq, dur) = match ev {
@@ -1058,5 +1062,11 @@ pub fn audio_system(audio: Res<AudioStream>, mut queue: ResMut<AudioQueue>) {
         }
     } else {
         queue.events.clear();
+    }
+}
+
+pub fn toggle_mute(keyboard: Res<ButtonInput<KeyCode>>, mut muted: ResMut<Muted>) {
+    if keyboard.just_pressed(KeyCode::KeyM) {
+        muted.0 = !muted.0;
     }
 }
