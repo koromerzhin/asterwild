@@ -48,3 +48,6 @@ impl Default for DayNight {
         Self { time: 0.25 }
     }
 }
+
+#[derive(Resource, Default)]
+pub struct Shield(pub bool);
