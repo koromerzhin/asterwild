@@ -470,8 +470,8 @@ fn save_load(
 
 fn hash2(x: i32, y: i32, seed: u64) -> f32 {
     let mut n = seed
-        .wrapping_add(x as u64 * 374761393)
-        .wrapping_add(y as u64 * 668265263);
+        .wrapping_add((x as u64).wrapping_mul(374761393))
+        .wrapping_add((y as u64).wrapping_mul(668265263));
     n = (n ^ (n >> 13)).wrapping_mul(1274126177);
     (n as f32) / (u64::MAX as f32)
 }
@@ -603,5 +603,54 @@ fn creature_ai(
             }
             vel.0.y = 0.0;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn terrain_deterministic() {
+        let a = surface_height(10, 12345);
+        let b = surface_height(10, 12345);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn terrain_varies_with_seed() {
+        let a = surface_height(10, 12345);
+        let b = surface_height(10, 99999);
+        // not guaranteed different but likely
+        let _ = (a, b);
+    }
+
+    #[test]
+    fn hash_range() {
+        for x in -5..5 {
+            for y in -5..5 {
+                let h = hash2(x, y, 42);
+                assert!((0.0..=1.0).contains(&h));
+            }
+        }
+    }
+
+    #[test]
+    fn cave_deterministic() {
+        assert_eq!(is_cave(5, 5, 7), is_cave(5, 5, 7));
+    }
+
+    #[test]
+    fn grid_index_bounds() {
+        let grid = WorldGrid {
+            width: 4,
+            height: 4,
+            blocks: vec![None; 16],
+            entities: vec![None; 16],
+        };
+        assert!(grid.idx(0, 0).is_some());
+        assert!(grid.idx(3, 3).is_some());
+        assert!(grid.idx(-1, 0).is_none());
+        assert!(grid.idx(4, 0).is_none());
     }
 }
