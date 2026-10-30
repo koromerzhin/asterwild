@@ -49,16 +49,27 @@ impl WorldGrid {
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Serialize, Deserialize, Clone)]
 struct Inventory {
     dirt: u32,
     stone: u32,
     ore: u32,
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Serialize, Deserialize, Clone)]
 struct Score {
     kills: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+struct SaveData {
+    width: i32,
+    height: i32,
+    blocks: Vec<Option<BlockType>>,
+    inventory: Inventory,
+    score: Score,
+    player_x: f32,
+    player_y: f32,
 }
 
 #[derive(Resource)]
@@ -164,11 +175,21 @@ fn setup(mut commands: Commands) {
         entities: vec![None; (WORLD_W * WORLD_H) as usize],
     };
 
-    // Attempt to load saved modifications
+    // Defaults
+    let mut inventory = Inventory::default();
+    let mut score = Score::default();
+    let mut player_x = 40.0 * TILE_SIZE;
+    let mut player_y = 20.0 * TILE_SIZE;
+
+    // Attempt to load saved game
     if let Ok(data) = std::fs::read_to_string("asterwild_save.json") {
-        if let Ok(loaded) = serde_json::from_str::<WorldGrid>(&data) {
+        if let Ok(loaded) = serde_json::from_str::<SaveData>(&data) {
             if loaded.width == WORLD_W && loaded.height == WORLD_H {
                 grid.blocks = loaded.blocks;
+                inventory = loaded.inventory;
+                score = loaded.score;
+                player_x = loaded.player_x;
+                player_y = loaded.player_y;
             }
         }
     }
@@ -199,6 +220,8 @@ fn setup(mut commands: Commands) {
     }
 
     commands.insert_resource(grid);
+    commands.insert_resource(inventory);
+    commands.insert_resource(score);
 
     // Player
     commands.spawn((
@@ -210,7 +233,7 @@ fn setup(mut commands: Commands) {
             custom_size: Some(Vec2::new(PLAYER_HALF_W * 2.0, PLAYER_HALF_H * 2.0)),
             ..default()
         },
-        Transform::from_xyz(40.0 * TILE_SIZE, 20.0 * TILE_SIZE, 1.0),
+        Transform::from_xyz(player_x, player_y, 1.0),
     ));
 
     // Creatures
@@ -242,7 +265,7 @@ fn setup(mut commands: Commands) {
         Hud,
         Text::new("Blocks: 0"),
         TextFont {
-            font_size: FontSize::Px(18.0),
+            font_size: FontSize::Px(16.0),
             ..default()
         },
         TextColor(Color::WHITE),
@@ -438,23 +461,38 @@ fn save_load(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
     mut grid: ResMut<WorldGrid>,
+    mut inventory: ResMut<Inventory>,
+    mut score: ResMut<Score>,
+    mut player_q: Query<&mut Transform, With<Player>>,
 ) {
     if keyboard.just_pressed(KeyCode::KeyS) {
-        if let Ok(json) = serde_json::to_string(&*grid) {
+        let player_pos = player_q.single().map(|t| (t.translation.x, t.translation.y)).unwrap_or((40.0 * TILE_SIZE, 20.0 * TILE_SIZE));
+        let save = SaveData {
+            width: grid.width,
+            height: grid.height,
+            blocks: grid.blocks.clone(),
+            inventory: inventory.clone(),
+            score: score.clone(),
+            player_x: player_pos.0,
+            player_y: player_pos.1,
+        };
+        if let Ok(json) = serde_json::to_string(&save) {
             let _ = std::fs::write("asterwild_save.json", json);
         }
     }
     if keyboard.just_pressed(KeyCode::KeyL) {
         if let Ok(data) = std::fs::read_to_string("asterwild_save.json") {
-            if let Ok(loaded) = serde_json::from_str::<WorldGrid>(&data) {
+            if let Ok(loaded) = serde_json::from_str::<SaveData>(&data) {
                 if loaded.width == grid.width && loaded.height == grid.height {
-                    // despawn existing
+                    // despawn existing blocks
                     for e in grid.entities.iter().flatten() {
                         commands.entity(*e).despawn();
                     }
                     grid.blocks = loaded.blocks;
                     grid.entities = vec![None; (grid.width * grid.height) as usize];
-                    // respawn
+                    *inventory = loaded.inventory;
+                    *score = loaded.score;
+                    // respawn blocks
                     for y in 0..grid.height {
                         for x in 0..grid.width {
                             if let Some(bt) = grid.get(x, y) {
@@ -477,6 +515,11 @@ fn save_load(
                                 }
                             }
                         }
+                    }
+                    // move player
+                    if let Ok(mut t) = player_q.single_mut() {
+                        t.translation.x = loaded.player_x;
+                        t.translation.y = loaded.player_y;
                     }
                 }
             }
