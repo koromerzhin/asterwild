@@ -961,11 +961,14 @@ pub fn play_beep(sink: &rodio::MixerDeviceSink, freq: f32, dur: f32) {
     sink.mixer().add(source);
 }
 
-pub fn menu_input(keyboard: Res<ButtonInput<KeyCode>>, mut next_state: ResMut<NextState<GameState>>, mut q: Query<&mut Visibility, With<MenuUi>>) {
+pub fn menu_input(keyboard: Res<ButtonInput<KeyCode>>, mut next_state: ResMut<NextState<GameState>>, mut exit: MessageWriter<AppExit>, mut q: Query<&mut Visibility, With<MenuUi>>) {
     if keyboard.just_pressed(KeyCode::Enter) {
         next_state.set(GameState::Playing);
         for mut v in &mut q {
             *v = Visibility::Hidden;
         }
+    }
+    if keyboard.just_pressed(KeyCode::Escape) {
+        exit.write(AppExit::Success);
     }
 }
