@@ -183,6 +183,7 @@ pub fn mouse_interact(
                     BlockType::Ladder => inventory.dirt += 1,
                     BlockType::Water => {}
                     BlockType::Door | BlockType::DoorOpen => inventory.dirt += 1,
+                    BlockType::Furnace => inventory.dirt += 1,
                 }
                 let px = tx as f32 * TILE_SIZE + TILE_SIZE / 2.0;
                 let py = ty as f32 * TILE_SIZE + TILE_SIZE / 2.0;
@@ -208,7 +209,7 @@ pub fn mouse_interact(
         if world.get(tx, ty).is_none() {
             let bt = selected.0;
             let have = match bt {
-                BlockType::Dirt | BlockType::Sand | BlockType::Snow | BlockType::Torch | BlockType::Ladder | BlockType::Water | BlockType::Door | BlockType::DoorOpen => {
+                BlockType::Dirt | BlockType::Sand | BlockType::Snow | BlockType::Torch | BlockType::Ladder | BlockType::Water | BlockType::Door | BlockType::DoorOpen | BlockType::Furnace => {
                     &mut inventory.dirt
                 }
                 BlockType::Stone => &mut inventory.stone,
@@ -580,6 +581,9 @@ pub fn hotbar_input(keyboard: Res<ButtonInput<KeyCode>>, mut selected: ResMut<Se
     if keyboard.just_pressed(KeyCode::Digit4) {
         selected.0 = BlockType::Water;
     }
+    if keyboard.just_pressed(KeyCode::Digit5) {
+        selected.0 = BlockType::Furnace;
+    }
 }
 
 pub fn crafting(keyboard: Res<ButtonInput<KeyCode>>, mut inventory: ResMut<Inventory>) {
@@ -842,5 +846,12 @@ pub fn update_inventory_ui(
             "Inventory\nDirt: {}\nStone: {}\nOre: {}\nKills: {}\nWeapon: {}\nShield: {}",
             inventory.dirt, inventory.stone, inventory.ore, score.kills, weapon.0, shield.0
         );
+    }
+}
+
+pub fn smelt(keyboard: Res<ButtonInput<KeyCode>>, mut inventory: ResMut<Inventory>) {
+    if keyboard.just_pressed(KeyCode::KeyG) && inventory.ore >= 2 {
+        inventory.ore -= 2;
+        inventory.ingot += 1;
     }
 }
