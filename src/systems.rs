@@ -595,6 +595,7 @@ pub fn survival(
     time: Res<Time>,
     mut player_q: Query<(&Transform, &mut Health), With<Player>>,
     creatures: Query<&Transform, With<Creature>>,
+    shield: Res<Shield>,
 ) {
     let Ok((pt, mut hp)) = player_q.single_mut() else {
         return;
@@ -606,7 +607,8 @@ pub fn survival(
         }
     }
     if damaged {
-        hp.0 -= 10.0 * time.delta_secs();
+        let dmg = if shield.0 { 5.0 } else { 10.0 };
+        hp.0 -= dmg * time.delta_secs();
     } else {
         hp.0 = (hp.0 + 5.0 * time.delta_secs()).min(100.0);
     }
@@ -773,3 +775,10 @@ pub fn toggle_door(
     }
 }
 
+
+pub fn toggle_shield(keyboard: Res<ButtonInput<KeyCode>>, mut inventory: ResMut<Inventory>, mut shield: ResMut<Shield>) {
+    if keyboard.just_pressed(KeyCode::KeyR) && !shield.0 && inventory.ore >= 3 {
+        inventory.ore -= 3;
+        shield.0 = true;
+    }
+}
