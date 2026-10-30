@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::blocks::BlockType;
+use crate::components::MenuAction;
 
 #[derive(Resource, Default, Serialize, Deserialize, Clone)]
 pub struct Inventory {
@@ -164,4 +165,14 @@ impl Default for UiScreen {
     fn default() -> Self {
         Self { kind: UiScreenKind::MainMenu, previous: UiScreenKind::MainMenu }
     }
+}
+
+#[derive(Resource, Default)]
+pub struct MenuSelection {
+    pub index: usize,
+}
+
+#[derive(Resource, Default)]
+pub struct PendingMenuAction {
+    pub action: Option<MenuAction>,
 }

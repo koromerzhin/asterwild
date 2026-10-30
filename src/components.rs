@@ -103,3 +103,25 @@ pub struct PauseMenuUi;
 
 #[derive(Component)]
 pub struct SettingsUi;
+
+
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
+pub enum MenuAction {
+    NewGame,
+    LoadGame,
+    Settings,
+    Quit,
+    Save,
+    Resume,
+    QuitToMenu,
+    Back,
+}
+
+#[derive(Component)]
+pub struct MenuItem {
+    pub action: MenuAction,
+    pub index: usize,
+}
+
+#[derive(Component)]
+pub struct MenuButton;
