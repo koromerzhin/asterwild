@@ -1,0 +1,21 @@
+[package]
+name = "asterwild"
+version = "0.1.0"
+edition = "2024"
+description = "Asterwild - spiritual successor to Starbound. 2D space exploration, adventure, building, survival."
+license = "GPL-3.0-or-later"
+repository = "https://github.com/koromerzhin/asterwild"
+authors = ["koromerzhin"]
+
+[dependencies]
+bevy = "0.20"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+lto = "thin"
