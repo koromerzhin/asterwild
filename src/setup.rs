@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::blocks::{self, BlockType};
-use crate::components::{Cloud, Creature, CreditsUi, Grounded, Health, Hud, InventoryUi, MainMenuUi, MenuUi, Minimap, MinimapCell, NightOverlay, PauseMenuUi, PauseUi, Player, SettingsUi, SplashUi, Star, Velocity};
+use crate::components::{Cloud, Creature, CreditsUi, Grounded, Health, Hud, InventoryUi, MainMenuUi, MenuAction, MenuItem, MenuUi, Minimap, MinimapCell, NightOverlay, PauseMenuUi, PauseUi, Player, SettingsUi, SplashUi, Star, Velocity};
 use crate::resources::{Inventory, Score};
 use crate::save::SaveData;
 use crate::world::{self, CHUNK_W, Chunk, TILE_SIZE, WORLD_H, World};
@@ -272,33 +272,109 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
     }
 
     // Main menu
-    commands.spawn((
-        MainMenuUi,
-        Text::new("ASTERWILD\n\n[N] New Game\n[L] Load Game\n[S] Settings\n[ESC] Quit"),
-        TextFont { font_size: FontSize::Px(28.0), ..default() },
-        TextColor(Color::WHITE),
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Percent(30.0),
-            left: Val::Percent(32.0),
-            ..default()
-        },
-        Visibility::Visible,
-    ));
+    commands
+        .spawn((
+            MainMenuUi,
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Percent(25.0),
+                left: Val::Percent(35.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: px(8),
+                ..default()
+            },
+            Visibility::Visible,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("ASTERWILD"),
+                TextFont { font_size: FontSize::Px(48.0), ..default() },
+                TextColor(Color::WHITE),
+                Node { margin: UiRect::bottom(px(16)), ..default() },
+            ));
+            for (i, (label, action)) in [
+                ("New Game", MenuAction::NewGame),
+                ("Load Game", MenuAction::LoadGame),
+                ("Settings", MenuAction::Settings),
+                ("Quit", MenuAction::Quit),
+            ]
+            .iter()
+            .enumerate()
+            {
+                parent
+                    .spawn((
+                        Interaction::default(),
+                        MenuItem { action: *action, index: i },
+                        Node {
+                            width: px(200),
+                            height: px(40),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgba(0.2, 0.2, 0.3, 0.8)),
+                    ))
+                    .with_children(|p| {
+                        p.spawn((
+                            Text::new(*label),
+                            TextFont { font_size: FontSize::Px(20.0), ..default() },
+                            TextColor(Color::WHITE),
+                        ));
+                    });
+            }
+        });
     // Pause menu
-    commands.spawn((
-        PauseMenuUi,
-        Text::new("PAUSED\n\n[K] Save\n[S] Settings\n[ESC] Resume\n[Q] Quit to menu"),
-        TextFont { font_size: FontSize::Px(28.0), ..default() },
-        TextColor(Color::WHITE),
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Percent(30.0),
-            left: Val::Percent(32.0),
-            ..default()
-        },
-        Visibility::Hidden,
-    ));
+    commands
+        .spawn((
+            PauseMenuUi,
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Percent(25.0),
+                left: Val::Percent(35.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: px(8),
+                ..default()
+            },
+            Visibility::Hidden,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("PAUSED"),
+                TextFont { font_size: FontSize::Px(40.0), ..default() },
+                TextColor(Color::WHITE),
+                Node { margin: UiRect::bottom(px(16)), ..default() },
+            ));
+            for (i, (label, action)) in [
+                ("Save", MenuAction::Save),
+                ("Settings", MenuAction::Settings),
+                ("Resume", MenuAction::Resume),
+                ("Quit to Menu", MenuAction::QuitToMenu),
+            ]
+            .iter()
+            .enumerate()
+            {
+                parent
+                    .spawn((
+                        Interaction::default(),
+                        MenuItem { action: *action, index: i },
+                        Node {
+                            width: px(200),
+                            height: px(40),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgba(0.2, 0.2, 0.3, 0.8)),
+                    ))
+                    .with_children(|p| {
+                        p.spawn((
+                            Text::new(*label),
+                            TextFont { font_size: FontSize::Px(20.0), ..default() },
+                            TextColor(Color::WHITE),
+                        ));
+                    });
+            }
+        });
     // Settings
     commands.spawn((
         SettingsUi,

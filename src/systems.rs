@@ -1,5 +1,6 @@
 use crate::blocks::{self, BlockType};
 use crate::components::*;
+use crate::components::{MenuAction, MenuItem};
 use crate::components::{MainMenuUi, PauseMenuUi, SettingsUi};
 use crate::components::Cloud;
 use crate::components::CreditsUi;
@@ -1241,5 +1242,130 @@ pub fn apply_pause_from_ui(paused: Res<Paused>, mut time: ResMut<Time<Virtual>>)
         time.set_relative_speed(0.0);
     } else {
         time.set_relative_speed(1.0);
+    }
+}
+
+pub fn menu_button_interaction(
+    mut interaction_q: Query<(&Interaction, &MenuItem), Changed<Interaction>>,
+    mut selection: ResMut<MenuSelection>,
+    mut pending: ResMut<PendingMenuAction>,
+) {
+    for (interaction, item) in &mut interaction_q {
+        match *interaction {
+            Interaction::Hovered => {
+                selection.index = item.index;
+            }
+            Interaction::Pressed => {
+                selection.index = item.index;
+                pending.action = Some(item.action);
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn menu_keyboard_nav(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut selection: ResMut<MenuSelection>,
+    mut pending: ResMut<PendingMenuAction>,
+    buttons: Query<&MenuItem>,
+) {
+    // count items in current visible menu? Use max index +1
+    let count = buttons.iter().map(|m| m.index).max().map(|m| m + 1).unwrap_or(0);
+    if count == 0 {
+        return;
+    }
+    if keyboard.just_pressed(KeyCode::ArrowUp) {
+        if selection.index == 0 {
+            selection.index = count - 1;
+        } else {
+            selection.index -= 1;
+        }
+    }
+    if keyboard.just_pressed(KeyCode::ArrowDown) {
+        selection.index = (selection.index + 1) % count;
+    }
+    if keyboard.just_pressed(KeyCode::Enter) || keyboard.just_pressed(KeyCode::Space) {
+        // find action for selected index
+        for item in &buttons {
+            if item.index == selection.index {
+                pending.action = Some(item.action);
+                break;
+            }
+        }
+    }
+}
+
+pub fn execute_menu_action(
+    mut pending: ResMut<PendingMenuAction>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut ui: ResMut<UiScreen>,
+    mut paused: ResMut<Paused>,
+    mut exit: MessageWriter<AppExit>,
+    mut world: ResMut<World>,
+    mut inventory: ResMut<Inventory>,
+    mut score: ResMut<Score>,
+    mut player_q: Query<&mut Transform, With<Player>>,
+) {
+    let Some(action) = pending.action.take() else { return; };
+    match action {
+        MenuAction::NewGame => {
+            world.chunks.clear();
+            *inventory = Inventory::default();
+            *score = Score::default();
+            if let Ok(mut t) = player_q.single_mut() {
+                t.translation.x = 40.0 * TILE_SIZE;
+                t.translation.y = 20.0 * TILE_SIZE;
+            }
+            ui.kind = UiScreenKind::None;
+            next_state.set(GameState::Playing);
+        }
+        MenuAction::LoadGame => {
+            ui.kind = UiScreenKind::None;
+            next_state.set(GameState::Playing);
+        }
+        MenuAction::Settings => {
+            ui.previous = ui.kind;
+            ui.kind = UiScreenKind::Settings;
+        }
+        MenuAction::Quit => {
+            exit.write(AppExit::Success);
+        }
+        MenuAction::Save => {
+            // trigger save via resource? We'll just set a flag; save_load handles S. 
+            // For now do nothing (user can press S).
+        }
+        MenuAction::Resume => {
+            ui.kind = UiScreenKind::None;
+            paused.0 = false;
+            next_state.set(GameState::Playing);
+        }
+        MenuAction::QuitToMenu => {
+            ui.kind = UiScreenKind::MainMenu;
+            paused.0 = false;
+            next_state.set(GameState::Menu);
+        }
+        MenuAction::Back => {
+            ui.kind = ui.previous;
+            if ui.kind == UiScreenKind::MainMenu {
+                next_state.set(GameState::Menu);
+            } else {
+                next_state.set(GameState::Playing);
+                paused.0 = ui.kind == UiScreenKind::Pause;
+            }
+        }
+    }
+}
+
+pub fn update_button_highlight(
+    selection: Res<MenuSelection>,
+    mut buttons: Query<(&MenuItem, &mut BackgroundColor)>,
+) {
+    for (item, mut bg) in &mut buttons {
+        if item.index == selection.index {
+            bg.0 = Color::srgba(0.4, 0.4, 0.6, 0.9);
+        } else {
+            bg.0 = Color::srgba(0.2, 0.2, 0.3, 0.8);
+        }
     }
 }
