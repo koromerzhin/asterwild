@@ -53,6 +53,7 @@ fn main() {
                 systems::toggle_help,
                 systems::update_hud,
                 systems::starfield_update,
+                systems::night_overlay,
             )
                 .chain(),
         )

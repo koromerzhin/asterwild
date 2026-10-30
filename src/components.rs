@@ -33,3 +33,7 @@ pub struct Star {
     pub base: Vec2,
     pub phase: f32,
 }
+
+
+#[derive(Component)]
+pub struct NightOverlay;

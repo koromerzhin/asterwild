@@ -619,3 +619,19 @@ pub fn starfield_update(time: Res<Time>, camera_q: Query<&Transform, (With<Camer
         sprite.color = Color::srgba(1.0, 1.0, 1.0, alpha.clamp(0.2, 1.0));
     }
 }
+
+pub fn night_overlay(
+    daynight: Res<DayNight>,
+    camera_q: Query<&Transform, (With<Camera2d>, Without<NightOverlay>)>,
+    mut overlay_q: Query<(&mut Sprite, &mut Transform), (With<NightOverlay>, Without<Camera2d>)>,
+) {
+    let brightness = (std::f32::consts::TAU * (daynight.time - 0.5)).cos();
+    let alpha = (0.7 * (1.0 - brightness) / 2.0).clamp(0.0, 0.75);
+    for (mut sprite, mut t) in &mut overlay_q {
+        sprite.color = Color::srgba(0.0, 0.0, 0.05, alpha);
+        if let Ok(ct) = camera_q.single() {
+            t.translation.x = ct.translation.x;
+            t.translation.y = ct.translation.y;
+        }
+    }
+}

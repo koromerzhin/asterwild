@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::blocks::{self, BlockType};
-use crate::components::{Creature, Grounded, Health, Hud, Player, Star, Velocity};
+use crate::components::{Creature, Grounded, Health, Hud, NightOverlay, Player, Star, Velocity};
 use crate::resources::{Inventory, Score};
 use crate::save::SaveData;
 use crate::world::{self, CHUNK_W, Chunk, TILE_SIZE, WORLD_H, World};
@@ -143,6 +143,16 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
             Transform::from_xyz(x, y, -5.0),
         ));
     }
+
+    commands.spawn((
+        NightOverlay,
+        Sprite {
+            color: Color::srgba(0.0, 0.0, 0.05, 0.0),
+            custom_size: Some(Vec2::splat(4000.0)),
+            ..default()
+        },
+        Transform::from_xyz(0.0, 0.0, 20.0),
+    ));
 
     commands.spawn((
         Hud,
