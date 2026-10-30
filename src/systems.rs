@@ -324,14 +324,21 @@ pub fn update_hud(
 
 
 pub fn save_load(
+    time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
     mut world: ResMut<World>,
     mut inventory: ResMut<Inventory>,
     mut score: ResMut<Score>,
     mut player_q: Query<&mut Transform, With<Player>>,
+    mut autosave: ResMut<AutoSaveTimer>,
 ) {
-    if keyboard.just_pressed(KeyCode::KeyS) {
+    autosave.timer -= time.delta_secs();
+    let auto = autosave.timer <= 0.0;
+    if auto {
+        autosave.timer = 60.0;
+    }
+    if keyboard.just_pressed(KeyCode::KeyS) || auto {
         // chunk loader: ensure chunks around player
         let player_pos = player_q
             .single()
