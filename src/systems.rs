@@ -40,14 +40,15 @@ pub fn collides(world: &World, px: f32, py: f32) -> bool {
 
 pub fn player_input(
     keyboard: Res<ButtonInput<KeyCode>>,
+    bindings: Res<KeyBindings>,
     mut query: Query<(&mut Velocity, &mut Grounded, &mut Facing), With<Player>>,
 ) {
     for (mut vel, _, mut facing) in &mut query {
         let mut vx = 0.0;
-        if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::ArrowLeft) {
+        if keyboard.pressed(bindings.left) || keyboard.pressed(KeyCode::ArrowLeft) {
             vx -= MOVE_SPEED;
         }
-        if keyboard.pressed(KeyCode::KeyD) || keyboard.pressed(KeyCode::ArrowRight) {
+        if keyboard.pressed(bindings.right) || keyboard.pressed(KeyCode::ArrowRight) {
             vx += MOVE_SPEED;
         }
         vel.0.x = vx;
@@ -64,6 +65,7 @@ pub fn physics(
     keyboard: Res<ButtonInput<KeyCode>>,
     world: Res<World>,
     jetpack: Res<Jetpack>,
+    bindings: Res<KeyBindings>,
     mut audio_queue: ResMut<AudioQueue>,
     mut query: Query<(&mut Transform, &mut Velocity, &mut Grounded, &mut JumpsLeft), With<Player>>,
 ) {
@@ -302,6 +304,8 @@ pub fn update_hud(
     shield: Res<Shield>,
     jetpack: Res<Jetpack>,
     slot: Res<SaveSlot>,
+    bindings: Res<KeyBindings>,
+    rebind: Res<RebindState>,
     world: Res<World>,
     player_q: Query<(&Health, &Transform), With<Player>>,
     mut q: Query<&mut Text, With<Hud>>,
@@ -317,7 +321,7 @@ pub fn update_hud(
             blocks::Biome::Snow => "Snow",
         };
         t.0 = format!(
-            "HP: {:.0} Sh: {} Jp: {} | Day: {} Deaths: {} Biome: {} | Pos: {:.0},{:.0} | Dirt: {} Stone: {} Ore: {} Ingot: {} Kills: {} Wpn: {} Slot: {} | Place: {:?}",
+            "HP: {:.0} Sh: {} Jp: {} | Day: {} Deaths: {} Biome: {} | Pos: {:.0},{:.0} | Dirt: {} Stone: {} Ore: {} Ingot: {} Kills: {} Wpn: {} Slot: {} | Keys L:{:?} R:{:?} J:{:?} | Place: {:?}",
             hp,
             if shield.0 { "Y" } else { "N" },
             if jetpack.0 { "Y" } else { "N" },
@@ -330,6 +334,7 @@ pub fn update_hud(
             score.kills,
             weapon.0,
             slot.0,
+            bindings.left, bindings.right, bindings.jump,
             selected.0
         );
     }
@@ -1112,6 +1117,27 @@ pub fn cloud_update(time: Res<Time>, mut clouds: Query<(&Cloud, &mut Transform)>
         }
         if t.translation.x - cam_x < -600.0 {
             t.translation.x = cam_x + 600.0;
+        }
+    }
+}
+
+pub fn rebind_system(keyboard: Res<ButtonInput<KeyCode>>, mut rebind: ResMut<RebindState>, mut bindings: ResMut<KeyBindings>) {
+    if keyboard.just_pressed(KeyCode::F7) {
+        rebind.target = Some(0);
+        return;
+    }
+    if let Some(target) = rebind.target {
+        // capture first pressed key
+        for key in keyboard.get_just_pressed() {
+            match target {
+                0 => bindings.left = *key,
+                1 => bindings.right = *key,
+                2 => bindings.jump = *key,
+                _ => {}
+            }
+            // advance
+            rebind.target = if target >= 2 { None } else { Some(target + 1) };
+            break;
         }
     }
 }

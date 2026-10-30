@@ -41,6 +41,8 @@ fn main() {
         .insert_resource(DayNight::default())
         .insert_resource(AutoSaveTimer::default())
         .insert_resource(Muted::default())
+        .insert_resource(KeyBindings::default())
+        .insert_resource(RebindState::default())
         .insert_resource(Volume::default())
         .insert_resource(AudioQueue::default())
         .insert_resource(SaveSlot::default())
