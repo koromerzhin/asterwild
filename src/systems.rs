@@ -291,6 +291,7 @@ pub fn update_hud(
     weapon: Res<WeaponLevel>,
     shield: Res<Shield>,
     jetpack: Res<Jetpack>,
+    slot: Res<SaveSlot>,
     world: Res<World>,
     player_q: Query<(&Health, &Transform), With<Player>>,
     mut q: Query<&mut Text, With<Hud>>,
@@ -306,7 +307,7 @@ pub fn update_hud(
             blocks::Biome::Snow => "Snow",
         };
         t.0 = format!(
-            "HP: {:.0} Sh: {} Jp: {} | Day: {} Deaths: {} Biome: {} | Pos: {:.0},{:.0} | Dirt: {} Stone: {} Ore: {} Ingot: {} Kills: {} Wpn: {} | Place: {:?}",
+            "HP: {:.0} Sh: {} Jp: {} | Day: {} Deaths: {} Biome: {} | Pos: {:.0},{:.0} | Dirt: {} Stone: {} Ore: {} Ingot: {} Kills: {} Wpn: {} Slot: {} | Place: {:?}",
             hp,
             if shield.0 { "Y" } else { "N" },
             if jetpack.0 { "Y" } else { "N" },
@@ -318,6 +319,7 @@ pub fn update_hud(
             inventory.ingot,
             score.kills,
             weapon.0,
+            slot.0,
             selected.0
         );
     }
@@ -333,6 +335,7 @@ pub fn save_load(
     mut score: ResMut<Score>,
     mut player_q: Query<&mut Transform, With<Player>>,
     mut autosave: ResMut<AutoSaveTimer>,
+    slot: Res<SaveSlot>,
 ) {
     autosave.timer -= time.delta_secs();
     let auto = autosave.timer <= 0.0;
@@ -362,11 +365,11 @@ pub fn save_load(
             player_y: player_pos.1,
         };
         if let Ok(json) = serde_json::to_string(&save) {
-            let _ = std::fs::write("asterwild_save.json", json);
+            let _ = std::fs::write(format!("asterwild_save_{}.json", slot.0), json);
         }
     }
     if keyboard.just_pressed(KeyCode::KeyL) {
-        if let Ok(data) = std::fs::read_to_string("asterwild_save.json") {
+        if let Ok(data) = std::fs::read_to_string(format!("asterwild_save_{}.json", slot.0)) {
             if let Ok(loaded) = serde_json::from_str::<SaveData>(&data) {
                 if loaded.seed == world.seed {
                     // despawn all
@@ -1008,5 +1011,11 @@ pub fn splash_update(time: Res<Time>, mut timer: ResMut<SplashTimer>, mut next_s
         for mut v in &mut q {
             *v = Visibility::Hidden;
         }
+    }
+}
+
+pub fn cycle_slot(keyboard: Res<ButtonInput<KeyCode>>, mut slot: ResMut<SaveSlot>) {
+    if keyboard.just_pressed(KeyCode::F2) {
+        slot.0 = (slot.0 + 1) % 3;
     }
 }

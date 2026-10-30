@@ -15,7 +15,7 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
     let mut player_y = 20.0 * TILE_SIZE;
 
     let mut loaded_chunks: Option<Vec<crate::world::ChunkData>> = None;
-    if let Ok(data) = std::fs::read_to_string("asterwild_save.json") {
+    if let Ok(data) = std::fs::read_to_string("asterwild_save_0.json") {
         if let Ok(save) = serde_json::from_str::<SaveData>(&data) {
             if save.seed == world.seed {
                 loaded_chunks = Some(save.chunks);
