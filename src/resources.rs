@@ -14,6 +14,7 @@ pub struct Inventory {
 #[derive(Resource, Default, Serialize, Deserialize, Clone)]
 pub struct Score {
     pub kills: u32,
+    pub days: u32,
 }
 
 #[derive(Resource)]
