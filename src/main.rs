@@ -41,6 +41,7 @@ fn main() {
         .insert_resource(DayNight::default())
         .insert_resource(AutoSaveTimer::default())
         .insert_resource(Muted::default())
+        .insert_resource(Volume::default())
         .insert_resource(AudioQueue::default())
         .insert_resource(SaveSlot::default())
         .insert_resource(SplashTimer::default())
@@ -52,6 +53,6 @@ fn main() {
         .add_systems(Update, (systems::chunk_manager, systems::player_input, systems::physics, systems::camera_follow, systems::mouse_interact).run_if(in_state(GameState::Playing)))
         .add_systems(Update, (systems::save_load, systems::day_night, systems::creature_ai, systems::hotbar_input, systems::crafting).run_if(in_state(GameState::Playing)))
         .add_systems(Update, (systems::survival, systems::attack, systems::upgrade_weapon, systems::toggle_help, systems::update_hud).run_if(in_state(GameState::Playing)))
-        .add_systems(Update, (systems::starfield_update, systems::night_overlay, systems::particle_update, systems::toggle_door, systems::toggle_shield, systems::water_flow, systems::weather, systems::toggle_inventory, systems::update_inventory_ui, systems::smelt, systems::toggle_jetpack, systems::toggle_pause, systems::apply_pause, systems::update_minimap, systems::audio_system).run_if(in_state(GameState::Playing)))
+        .add_systems(Update, (systems::starfield_update, systems::night_overlay, systems::particle_update, systems::toggle_door, systems::toggle_shield, systems::water_flow, systems::weather, systems::toggle_inventory, systems::update_inventory_ui, systems::smelt, systems::toggle_jetpack, systems::toggle_pause, systems::apply_pause, systems::update_minimap, systems::audio_system, systems::ambient_update, systems::volume_control, systems::toggle_mute).run_if(in_state(GameState::Playing)))
         .run();
 }

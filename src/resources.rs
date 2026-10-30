@@ -74,6 +74,15 @@ pub struct Paused(pub bool);
 #[derive(Resource, Default)]
 pub struct AudioStream {
     pub sink: Option<rodio::MixerDeviceSink>,
+    pub ambient: Option<rodio::Player>,
+}
+
+#[derive(Resource)]
+pub struct Volume(pub f32);
+impl Default for Volume {
+    fn default() -> Self {
+        Self(1.0)
+    }
 }
 
 #[derive(Resource)]

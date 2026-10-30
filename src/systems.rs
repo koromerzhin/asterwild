@@ -977,8 +977,16 @@ pub fn update_minimap(
     }
 }
 
-pub fn init_audio(mut audio: ResMut<AudioStream>) {
+pub fn init_audio(mut audio: ResMut<AudioStream>, volume: Res<Volume>) {
     if let Ok(sink) = rodio::DeviceSinkBuilder::open_default_sink() {
+        let player = rodio::Player::connect_new(sink.mixer());
+        use rodio::source::{SineWave, Source};
+        let source = SineWave::new(110.0)
+            .amplify(0.05 * volume.0)
+            .repeat_infinite();
+        player.append(source);
+        player.set_volume(volume.0);
+        audio.ambient = Some(player);
         audio.sink = Some(sink);
     }
 }
@@ -1068,5 +1076,25 @@ pub fn audio_system(audio: Res<AudioStream>, muted: Res<Muted>, mut queue: ResMu
 pub fn toggle_mute(keyboard: Res<ButtonInput<KeyCode>>, mut muted: ResMut<Muted>) {
     if keyboard.just_pressed(KeyCode::KeyM) {
         muted.0 = !muted.0;
+    }
+}
+
+pub fn ambient_update(audio: Res<AudioStream>, muted: Res<Muted>, volume: Res<Volume>) {
+    if let Some(player) = &audio.ambient {
+        player.set_volume(if muted.0 { 0.0 } else { volume.0 * 0.3 });
+        if muted.0 {
+            player.pause();
+        } else {
+            player.play();
+        }
+    }
+}
+
+pub fn volume_control(keyboard: Res<ButtonInput<KeyCode>>, mut volume: ResMut<Volume>) {
+    if keyboard.just_pressed(KeyCode::F3) {
+        volume.0 = (volume.0 - 0.1).clamp(0.0, 1.0);
+    }
+    if keyboard.just_pressed(KeyCode::F4) {
+        volume.0 = (volume.0 + 0.1).clamp(0.0, 1.0);
     }
 }
