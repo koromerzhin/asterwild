@@ -305,11 +305,11 @@ pub fn update_hud(
             blocks::Biome::Snow => "Snow",
         };
         t.0 = format!(
-            "HP: {:.0} Sh: {} Jp: {} | Day: {} Biome: {} | Pos: {:.0},{:.0} | Dirt: {} Stone: {} Ore: {} Ingot: {} Kills: {} Wpn: {} | Place: {:?}",
+            "HP: {:.0} Sh: {} Jp: {} | Day: {} Deaths: {} Biome: {} | Pos: {:.0},{:.0} | Dirt: {} Stone: {} Ore: {} Ingot: {} Kills: {} Wpn: {} | Place: {:?}",
             hp,
             if shield.0 { "Y" } else { "N" },
             if jetpack.0 { "Y" } else { "N" },
-            score.days, bname,
+            score.days, score.deaths, bname,
             px, py,
             inventory.dirt,
             inventory.stone,
@@ -645,6 +645,7 @@ pub fn survival(
     mut player_q: Query<(&mut Transform, &mut Health), With<Player>>,
     creatures: Query<&Transform, (With<Creature>, Without<Player>)>,
     shield: Res<Shield>,
+    mut score: ResMut<Score>,
 ) {
     let Ok((mut pt, mut hp)) = player_q.single_mut() else {
         return;
@@ -665,6 +666,7 @@ pub fn survival(
         hp.0 = 100.0;
         pt.translation.x = 40.0 * TILE_SIZE;
         pt.translation.y = 20.0 * TILE_SIZE;
+        score.deaths += 1;
     }
 }
 
