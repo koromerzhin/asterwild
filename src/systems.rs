@@ -1,5 +1,6 @@
 use crate::blocks::{self, BlockType};
 use crate::components::*;
+use crate::components::MinimapCell;
 use crate::resources::DayNight;
 use crate::resources::*;
 use crate::save::SaveData;
@@ -909,5 +910,31 @@ pub fn apply_pause(paused: Res<Paused>, mut time: ResMut<Time<Virtual>>) {
         time.set_relative_speed(0.0);
     } else {
         time.set_relative_speed(1.0);
+    }
+}
+
+pub fn update_minimap(
+    world: Res<World>,
+    player_q: Query<&Transform, With<Player>>,
+    mut q: Query<(&MinimapCell, &mut BackgroundColor)>,
+) {
+    let Ok(pt) = player_q.single() else { return; };
+    let px = (pt.translation.x / TILE_SIZE).floor() as i32;
+    let py = (pt.translation.y / TILE_SIZE).floor() as i32;
+    for (cell, mut bg) in &mut q {
+        let x = px + cell.dx;
+        let _y = py + cell.dy;
+        let biome = blocks::biome_at(x, world.seed);
+        let color = match biome {
+            blocks::Biome::Forest => Color::srgb(0.2, 0.5, 0.2),
+            blocks::Biome::Desert => Color::srgb(0.8, 0.7, 0.4),
+            blocks::Biome::Snow => Color::srgb(0.9, 0.9, 1.0),
+        };
+        // mark player position
+        if cell.dx == 0 && cell.dy == 0 {
+            bg.0 = Color::srgb(1.0, 0.2, 0.2);
+        } else {
+            bg.0 = color;
+        }
     }
 }

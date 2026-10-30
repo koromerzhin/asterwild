@@ -56,3 +56,13 @@ pub struct JumpsLeft(pub u32);
 
 #[derive(Component)]
 pub struct PauseUi;
+
+
+#[derive(Component)]
+pub struct Minimap;
+
+#[derive(Component)]
+pub struct MinimapCell {
+    pub dx: i32,
+    pub dy: i32,
+}

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::blocks::{self, BlockType};
-use crate::components::{Creature, Grounded, Health, Hud, InventoryUi, NightOverlay, PauseUi, Player, Star, Velocity};
+use crate::components::{Creature, Grounded, Health, Hud, InventoryUi, Minimap, MinimapCell, NightOverlay, PauseUi, Player, Star, Velocity};
 use crate::resources::{Inventory, Score};
 use crate::save::SaveData;
 use crate::world::{self, CHUNK_W, Chunk, TILE_SIZE, WORLD_H, World};
@@ -184,6 +184,38 @@ pub fn setup(mut commands: Commands, mut world: ResMut<World>) {
         },
         Visibility::Hidden,
     ));
+
+    commands
+        .spawn((
+            Minimap,
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(8),
+                right: px(8),
+                width: px(11 * 6),
+                height: px(11 * 6),
+                display: Display::Grid,
+                grid_template_columns: vec![GridTrack::px(6.0); 11],
+                grid_template_rows: vec![GridTrack::px(6.0); 11],
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
+        ))
+        .with_children(|parent| {
+            for dy in (0..11).rev() {
+                for dx in 0..11 {
+                    parent.spawn((
+                        MinimapCell { dx: dx - 5, dy: dy - 5 },
+                        Node {
+                            width: px(6),
+                            height: px(6),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.1, 0.1, 0.1)),
+                    ));
+                }
+            }
+        });
 
     commands.spawn((
         Hud,
