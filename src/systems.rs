@@ -305,11 +305,11 @@ pub fn update_hud(
             blocks::Biome::Snow => "Snow",
         };
         t.0 = format!(
-            "HP: {:.0} Sh: {} Jp: {} | Biome: {} | Pos: {:.0},{:.0} | Dirt: {} Stone: {} Ore: {} Ingot: {} Kills: {} Wpn: {} | Place: {:?}",
+            "HP: {:.0} Sh: {} Jp: {} | Day: {} Biome: {} | Pos: {:.0},{:.0} | Dirt: {} Stone: {} Ore: {} Ingot: {} Kills: {} Wpn: {} | Place: {:?}",
             hp,
             if shield.0 { "Y" } else { "N" },
             if jetpack.0 { "Y" } else { "N" },
-            bname,
+            score.days, bname,
             px, py,
             inventory.dirt,
             inventory.stone,
@@ -437,9 +437,14 @@ pub fn day_night(
     time: Res<Time>,
     mut daynight: ResMut<DayNight>,
     mut clear_color: ResMut<ClearColor>,
+    mut score: ResMut<Score>,
 ) {
     let dt = time.delta_secs();
+    let prev = daynight.time;
     daynight.time = (daynight.time + dt / 120.0) % 1.0;
+    if daynight.time < prev {
+        score.days += 1;
+    }
     // 0.0 midnight, 0.25 dawn, 0.5 noon, 0.75 dusk
     let t = daynight.time;
     let (r, g, b) = if t < 0.25 {
