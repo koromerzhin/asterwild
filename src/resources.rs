@@ -98,3 +98,18 @@ impl Default for SplashTimer {
 
 #[derive(Resource, Default)]
 pub struct SaveSlot(pub u8);
+
+#[derive(Clone, Copy)]
+pub enum AudioEvent {
+    Break,
+    Place,
+    Jump,
+    Attack,
+    Hit,
+    Creature,
+}
+
+#[derive(Resource, Default)]
+pub struct AudioQueue {
+    pub events: Vec<AudioEvent>,
+}
