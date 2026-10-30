@@ -77,7 +77,17 @@ fn main() {
         }))
         .insert_resource(Inventory::default())
         .add_systems(Startup, setup)
-        .add_systems(Update, (player_input, physics, camera_follow, mouse_interact, save_load, update_hud))
+        .add_systems(
+            Update,
+            (
+                player_input,
+                physics,
+                camera_follow,
+                mouse_interact,
+                save_load,
+                update_hud,
+            ),
+        )
         .run();
 }
 
@@ -90,7 +100,11 @@ fn setup(mut commands: Commands) {
         let h = 8 + ((x as f32 * 0.15).sin() * 3.0) as i32 + (x as i32 % 5);
         let surface = h.clamp(4, WORLD_H - 4);
         for y in 0..surface {
-            let bt = if y < surface - 3 { BlockType::Stone } else { BlockType::Dirt };
+            let bt = if y < surface - 3 {
+                BlockType::Stone
+            } else {
+                BlockType::Dirt
+            };
             let idx = (y as usize) * (WORLD_W as usize) + (x as usize);
             blocks[idx] = Some(bt);
         }
@@ -116,18 +130,20 @@ fn setup(mut commands: Commands) {
     for y in 0..WORLD_H {
         for x in 0..WORLD_W {
             if let Some(bt) = grid.get(x, y) {
-                let e = commands.spawn((
-                    Sprite {
-                        color: bt.color(),
-                        custom_size: Some(Vec2::splat(TILE_SIZE)),
-                        ..default()
-                    },
-                    Transform::from_xyz(
-                        x as f32 * TILE_SIZE + TILE_SIZE / 2.0,
-                        y as f32 * TILE_SIZE + TILE_SIZE / 2.0,
-                        0.0,
-                    ),
-                )).id();
+                let e = commands
+                    .spawn((
+                        Sprite {
+                            color: bt.color(),
+                            custom_size: Some(Vec2::splat(TILE_SIZE)),
+                            ..default()
+                        },
+                        Transform::from_xyz(
+                            x as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                            y as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                            0.0,
+                        ),
+                    ))
+                    .id();
                 if let Some(i) = grid.idx(x, y) {
                     grid.entities[i] = Some(e);
                 }
@@ -154,7 +170,10 @@ fn setup(mut commands: Commands) {
     commands.spawn((
         Hud,
         Text::new("Blocks: 0"),
-        TextFont { font_size: FontSize::Px(18.0), ..default() },
+        TextFont {
+            font_size: FontSize::Px(18.0),
+            ..default()
+        },
         TextColor(Color::WHITE),
         Node {
             position_type: PositionType::Absolute,
@@ -216,7 +235,11 @@ fn physics(
             vel.0.y = -MAX_FALL;
         }
         // jump
-        if grounded.0 && (keyboard.just_pressed(KeyCode::Space) || keyboard.just_pressed(KeyCode::KeyW) || keyboard.just_pressed(KeyCode::ArrowUp)) {
+        if grounded.0
+            && (keyboard.just_pressed(KeyCode::Space)
+                || keyboard.just_pressed(KeyCode::KeyW)
+                || keyboard.just_pressed(KeyCode::ArrowUp))
+        {
             vel.0.y = JUMP_SPEED;
             grounded.0 = false;
         }
@@ -262,9 +285,15 @@ fn mouse_interact(
     mut grid: ResMut<WorldGrid>,
     mut inventory: ResMut<Inventory>,
 ) {
-    let Some(cursor_pos) = window.cursor_position() else { return; };
-    let Ok((camera, cam_transform)) = camera_q.single() else { return; };
-    let Ok(world_pos) = camera.viewport_to_world_2d(cam_transform, cursor_pos) else { return; };
+    let Some(cursor_pos) = window.cursor_position() else {
+        return;
+    };
+    let Ok((camera, cam_transform)) = camera_q.single() else {
+        return;
+    };
+    let Ok(world_pos) = camera.viewport_to_world_2d(cam_transform, cursor_pos) else {
+        return;
+    };
 
     let tx = (world_pos.x / TILE_SIZE).floor() as i32;
     let ty = (world_pos.y / TILE_SIZE).floor() as i32;
@@ -288,18 +317,20 @@ fn mouse_interact(
             if inventory.dirt > 0 {
                 inventory.dirt -= 1;
                 let bt = BlockType::Dirt;
-                let e = commands.spawn((
-                    Sprite {
-                        color: bt.color(),
-                        custom_size: Some(Vec2::splat(TILE_SIZE)),
-                        ..default()
-                    },
-                    Transform::from_xyz(
-                        tx as f32 * TILE_SIZE + TILE_SIZE / 2.0,
-                        ty as f32 * TILE_SIZE + TILE_SIZE / 2.0,
-                        0.0,
-                    ),
-                )).id();
+                let e = commands
+                    .spawn((
+                        Sprite {
+                            color: bt.color(),
+                            custom_size: Some(Vec2::splat(TILE_SIZE)),
+                            ..default()
+                        },
+                        Transform::from_xyz(
+                            tx as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                            ty as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                            0.0,
+                        ),
+                    ))
+                    .id();
                 let idx = grid.idx(tx, ty).unwrap();
                 grid.blocks[idx] = Some(bt);
                 grid.entities[idx] = Some(e);
@@ -308,10 +339,7 @@ fn mouse_interact(
     }
 }
 
-fn update_hud(
-    inventory: Res<Inventory>,
-    mut q: Query<&mut Text, With<Hud>>,
-) {
+fn update_hud(inventory: Res<Inventory>, mut q: Query<&mut Text, With<Hud>>) {
     for mut t in &mut q {
         t.0 = format!("Dirt: {}  Stone: {}", inventory.dirt, inventory.stone);
     }
@@ -341,18 +369,20 @@ fn save_load(
                     for y in 0..grid.height {
                         for x in 0..grid.width {
                             if let Some(bt) = grid.get(x, y) {
-                                let e = commands.spawn((
-                                    Sprite {
-                                        color: bt.color(),
-                                        custom_size: Some(Vec2::splat(TILE_SIZE)),
-                                        ..default()
-                                    },
-                                    Transform::from_xyz(
-                                        x as f32 * TILE_SIZE + TILE_SIZE / 2.0,
-                                        y as f32 * TILE_SIZE + TILE_SIZE / 2.0,
-                                        0.0,
-                                    ),
-                                )).id();
+                                let e = commands
+                                    .spawn((
+                                        Sprite {
+                                            color: bt.color(),
+                                            custom_size: Some(Vec2::splat(TILE_SIZE)),
+                                            ..default()
+                                        },
+                                        Transform::from_xyz(
+                                            x as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                                            y as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                                            0.0,
+                                        ),
+                                    ))
+                                    .id();
                                 if let Some(i) = grid.idx(x, y) {
                                     grid.entities[i] = Some(e);
                                 }
