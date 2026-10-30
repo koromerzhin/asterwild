@@ -55,10 +55,11 @@ pub fn physics(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
     world: Res<World>,
-    mut query: Query<(&mut Transform, &mut Velocity, &mut Grounded), With<Player>>,
+    jetpack: Res<Jetpack>,
+    mut query: Query<(&mut Transform, &mut Velocity, &mut Grounded, &mut JumpsLeft), With<Player>>,
 ) {
     let dt = time.delta_secs();
-    for (mut transform, mut vel, mut grounded) in &mut query {
+    for (mut transform, mut vel, mut grounded, mut jumps) in &mut query {
         // ladder check
         let on_ladder = {
             let cx = (transform.translation.x / TILE_SIZE).floor() as i32;
@@ -83,13 +84,21 @@ pub fn physics(
             vel.0.y = -MAX_FALL;
         }
         // jump
-        if grounded.0
-            && (keyboard.just_pressed(KeyCode::Space)
-                || keyboard.just_pressed(KeyCode::KeyW)
-                || keyboard.just_pressed(KeyCode::ArrowUp))
-        {
-            vel.0.y = JUMP_SPEED;
-            grounded.0 = false;
+        let jump_pressed = keyboard.just_pressed(KeyCode::Space)
+            || keyboard.just_pressed(KeyCode::KeyW)
+            || keyboard.just_pressed(KeyCode::ArrowUp);
+        if jump_pressed {
+            if grounded.0 {
+                vel.0.y = JUMP_SPEED;
+                grounded.0 = false;
+                jumps.0 = if jetpack.0 { 1 } else { 0 };
+            } else if jetpack.0 && jumps.0 > 0 {
+                vel.0.y = JUMP_SPEED;
+                jumps.0 -= 1;
+            }
+        }
+        if grounded.0 {
+            jumps.0 = if jetpack.0 { 1 } else { 0 };
         }
 
         // horizontal
@@ -853,5 +862,12 @@ pub fn smelt(keyboard: Res<ButtonInput<KeyCode>>, mut inventory: ResMut<Inventor
     if keyboard.just_pressed(KeyCode::KeyG) && inventory.ore >= 2 {
         inventory.ore -= 2;
         inventory.ingot += 1;
+    }
+}
+
+pub fn toggle_jetpack(keyboard: Res<ButtonInput<KeyCode>>, mut inventory: ResMut<Inventory>, mut jetpack: ResMut<Jetpack>) {
+    if keyboard.just_pressed(KeyCode::KeyJ) && !jetpack.0 && inventory.ingot >= 3 {
+        inventory.ingot -= 3;
+        jetpack.0 = true;
     }
 }

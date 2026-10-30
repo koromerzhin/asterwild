@@ -48,3 +48,7 @@ pub struct Particle {
 
 #[derive(Component)]
 pub struct InventoryUi;
+
+
+#[derive(Component)]
+pub struct JumpsLeft(pub u32);
