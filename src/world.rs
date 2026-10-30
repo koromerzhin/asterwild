@@ -54,6 +54,13 @@ impl World {
         let lx = Self::local_x(x);
         chunk.blocks[Self::block_index(lx, y)]
     }
+    pub fn is_solid(&self, x: i32, y: i32) -> bool {
+        match self.get(x, y) {
+            Some(BlockType::DoorOpen) => false,
+            Some(_) => true,
+            None => false,
+        }
+    }
     pub fn ensure_chunk(&mut self, commands: &mut Commands, cx: i32) {
         if self.chunks.contains_key(&cx) {
             return;

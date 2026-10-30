@@ -11,6 +11,8 @@ pub enum BlockType {
     Torch,
     Ladder,
     Water,
+    Door,
+    DoorOpen,
 }
 
 impl BlockType {
@@ -24,6 +26,8 @@ impl BlockType {
             BlockType::Torch => Color::srgb(0.9, 0.6, 0.2),
             BlockType::Ladder => Color::srgb(0.6, 0.4, 0.2),
             BlockType::Water => Color::srgba(0.2, 0.4, 0.9, 0.6),
+            BlockType::Door => Color::srgb(0.4, 0.25, 0.1),
+            BlockType::DoorOpen => Color::srgb(0.4, 0.25, 0.1),
         }
     }
 }
