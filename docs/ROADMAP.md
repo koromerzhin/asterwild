@@ -8,12 +8,14 @@
 - Initial docs: in progress.
 - Minimal architecture: in progress.
 
-## Phase 1 — Playable prototype
+## Phase 1 — Playable prototype (largely complete)
 - Window, camera, character, movement, jump, collisions.
-- Block terrain, break/place blocks.
-- Small generated zone.
-- Basic resources, minimal inventory.
-- Save/load.
+- Block terrain, break/place blocks, hotbar selection.
+- Seeded procedural terrain (hills, caves, ore).
+- Simple creatures with wandering AI and combat.
+- Day/night cycle.
+- Inventory, score, HUD.
+- Save/load of terrain, inventory, score, player.
 
 ## Phase 2 — First planet
 - Procedural generation, biomes, relief, caves.
