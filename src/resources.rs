@@ -8,6 +8,7 @@ pub struct Inventory {
     pub dirt: u32,
     pub stone: u32,
     pub ore: u32,
+    pub ingot: u32,
 }
 
 #[derive(Resource, Default, Serialize, Deserialize, Clone)]
