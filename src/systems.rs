@@ -181,6 +181,7 @@ pub fn mouse_interact(
                     BlockType::Snow => inventory.dirt += 1,
                     BlockType::Torch => inventory.dirt += 1,
                     BlockType::Ladder => inventory.dirt += 1,
+                    BlockType::Water => {}
                 }
                 let px = tx as f32 * TILE_SIZE + TILE_SIZE / 2.0;
                 let py = ty as f32 * TILE_SIZE + TILE_SIZE / 2.0;
@@ -206,14 +207,17 @@ pub fn mouse_interact(
         if world.get(tx, ty).is_none() {
             let bt = selected.0;
             let have = match bt {
-                BlockType::Dirt | BlockType::Sand | BlockType::Snow | BlockType::Torch | BlockType::Ladder => {
+                BlockType::Dirt | BlockType::Sand | BlockType::Snow | BlockType::Torch | BlockType::Ladder | BlockType::Water => {
                     &mut inventory.dirt
                 }
                 BlockType::Stone => &mut inventory.stone,
                 BlockType::Ore => &mut inventory.ore,
             };
-            if *have > 0 {
-                *have -= 1;
+            let can_place = if bt == BlockType::Water { true } else { *have > 0 };
+            if can_place {
+                if bt != BlockType::Water {
+                    *have -= 1;
+                }
                 let cx = World::chunk_x(tx);
                 world.ensure_chunk(&mut commands, cx);
                 let e = commands
@@ -572,6 +576,9 @@ pub fn hotbar_input(keyboard: Res<ButtonInput<KeyCode>>, mut selected: ResMut<Se
     if keyboard.just_pressed(KeyCode::Digit3) {
         selected.0 = BlockType::Ore;
     }
+    if keyboard.just_pressed(KeyCode::Digit4) {
+        selected.0 = BlockType::Water;
+    }
 }
 
 pub fn crafting(keyboard: Res<ButtonInput<KeyCode>>, mut inventory: ResMut<Inventory>) {
@@ -689,5 +696,49 @@ pub fn particle_update(
         t.translation.y += vel.0.y * dt;
         let alpha = (p.lifetime / p.max_lifetime).clamp(0.0, 1.0);
         sprite.color = sprite.color.with_alpha(alpha);
+    }
+}
+
+pub fn water_flow(
+    mut commands: Commands,
+    mut world: ResMut<World>,
+) {
+    for (cx, chunk) in world.chunks.iter_mut() {
+        // process bottom to top
+        for y in 1..WORLD_H as usize {
+            for lx in 0..CHUNK_W as usize {
+                let idx = World::block_index(lx as i32, y as i32);
+                if chunk.blocks[idx] == Some(BlockType::Water) {
+                    let below_idx = World::block_index(lx as i32, y as i32 - 1);
+                    if chunk.blocks[below_idx].is_none() {
+                        // move down
+                        chunk.blocks[below_idx] = Some(BlockType::Water);
+                        chunk.blocks[idx] = None;
+                        // update entities
+                        let wx = *cx * CHUNK_W + lx as i32;
+                        if let Some(e) = chunk.entities[idx].take() {
+                            commands.entity(e).despawn();
+                        }
+                        let new_e = commands.spawn((
+                            Sprite {
+                                color: BlockType::Water.color(),
+                                custom_size: Some(Vec2::splat(TILE_SIZE)),
+                                ..default()
+                            },
+                            Transform::from_xyz(
+                                wx as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                                (y as i32 - 1) as f32 * TILE_SIZE + TILE_SIZE / 2.0,
+                                0.0,
+                            ),
+                        )).id();
+                        chunk.entities[below_idx] = Some(new_e);
+                        if let Some(g) = chunk.glows[idx].take() {
+                            commands.entity(g).despawn();
+                        }
+                        chunk.glows[below_idx] = None;
+                    }
+                }
+            }
+        }
     }
 }

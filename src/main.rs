@@ -55,6 +55,7 @@ fn main() {
                 systems::starfield_update,
                 systems::night_overlay,
                 systems::particle_update,
+                systems::water_flow,
             )
                 .chain(),
         )
